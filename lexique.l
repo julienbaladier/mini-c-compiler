@@ -1,10 +1,11 @@
+%option yylineno
 %{
-#include <stdio.h>
-#include "y.tab.h"
+	#include <stdio.h>
+	#include "y.tab.h"
 %}
 
 
-blancs    [ \t]+
+blancs    [ \n\t]+
 
 letter		[a-zA-Z]
 digit		[0-9]
@@ -16,8 +17,8 @@ exposant  [eE][+-]?{integer}
 
 main					{return tMAIN;}
 printf					{return tPRINTF;}
-{						{return tOPENED_BRACKET;}
-}						{return tCLOSED_BRACKET;}
+"{"						{return tOPENED_BRACKET;}
+"}"						{return tCLOSED_BRACKET;}
 const					{return tCONST;}
 int						{return tINT;}
 "+"						{return tADD;}
@@ -28,7 +29,7 @@ int						{return tINT;}
 "("						{return tOPENED_PARENTHESIS;}
 ")"						{return tCLOSED_PARENTHESIS;}
 ","						{return tCOMMA;}
-\n 						{return tNEWLINE;}
+"\\n"					{return tNEWLINE;}
 ";"						{return tSEMICOLON;}
 {integer}{exposant}		{
 							yylval.nb = (int) atof(yytext);
@@ -47,6 +48,6 @@ int						{return tINT;}
 						}
 
 {blancs}				{};
-"."						{return tERROR;}
+.						{return tERROR;}
 
 %%
