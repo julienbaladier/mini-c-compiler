@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "list.h"
 
@@ -6,18 +7,38 @@
  * Arguments: The data the list will contain or NULL to create an empty
  * list/node and a CmpFunc
  */
-llist* list_create(int (*CmpFunc)(list_node*,void*))
-{
+llist* list_create(int (*CmpFunc)(list_node*,void*), void (*DpyFunc)(void * data)){
 	if (!CmpFunc) return NULL;
+	if (!DpyFunc) return NULL;
+
 	llist *l = malloc(sizeof(llist));
 
 	if (l != NULL) {
 		l->CmpFunc = CmpFunc;
+		l->DpyFunc = DpyFunc;
+		l->node_number = 0;
 		l->node = NULL;
 	}
 
 	return l;
 }
+
+
+void print_list(llist *l){
+	list_node *it;
+	if (l->node == NULL){
+		printf("La liste est vide !\n");
+	} else {
+		printf("La liste contient %d elements :\n", l->node_number);
+		it = l->node;
+		while(it != NULL){
+			l->DpyFunc(it->data); printf("\n");
+			it = it->next;
+		}
+	}
+}
+
+
 
 /* Completely destroys a list
  * Arguments: A pointer to a pointer to a list
@@ -49,19 +70,7 @@ void list_node_destroy(list_node *node)
 	}
 }
 
-/* Creates a list node and inserts it after the specified node
- * Arguments: A node to insert after and the data the new node will contain
- */
-list_node* list_insert_after(list_node *node, void *data)
-{
-	if (!node) return NULL;
-	list_node *new_node = list_node_create(data);
-	if (new_node) {
-		new_node->next = node->next;
-		node->next = new_node;
-	}
-	return new_node;
-}
+
 
 /* Creates a new list node and inserts it in the beginning of the list
  * Arguments: The list the node will be inserted to and the data the node will
@@ -74,6 +83,7 @@ list_node* list_insert_beginning(llist *l, void *data)
 	if (new_node) {
 		new_node->next = l->node;
 		l->node = new_node;
+		l->node_number++;
 	}
 	return new_node;
 }
@@ -97,6 +107,7 @@ list_node* list_insert_end(llist *l, void *data)
 				}
 			}
 		}
+		l->node_number++;
 	}
 	return new_node;
 }
@@ -114,6 +125,7 @@ void list_remove(llist *l, list_node *node)
 		tmp->next = node->next;
 		list_node_destroy(node);
 		node = NULL;
+		l->node_number--;
 	}
 }
 
@@ -156,6 +168,7 @@ void *list_pop(llist *l)
 		data = tmp_node->data;
 		l->node = tmp_node->next;
 		list_node_destroy(tmp_node);
+		l->node_number--;
 	}
 	return data;
 }

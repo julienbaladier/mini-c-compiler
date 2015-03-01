@@ -8,15 +8,17 @@ typedef struct list_node {
 
 typedef struct llist {
 	int (*CmpFunc)(list_node*,void*);
+	void (*DpyFunc)(void * data);
+	unsigned int node_number;
 	list_node *node;
 } llist;
 
 /* linked list */
-llist* list_create(int (*CmpFunc)(list_node*,void*));
+llist* list_create(int (*CmpFunc)(list_node*,void*), void (*DpyFunc)(void * data));
+void print_list(llist *l);
 void list_destroy(llist *list);
 list_node* list_node_create(void *data);
 void list_node_destroy(list_node *node);
-list_node* list_insert_after(list_node *node, void *data);
 list_node* list_insert_beginning(llist *l, void *data);
 list_node* list_insert_end(llist *l, void *data);
 void list_remove(llist *l, list_node *node);
