@@ -29,7 +29,6 @@ void print_list(llist *l){
 	if (l->node == NULL){
 		printf("La liste est vide !\n");
 	} else {
-		printf("La liste contient %d elements :\n", l->node_number);
 		it = l->node;
 		while(it != NULL){
 			l->DpyFunc(it->data); printf("\n");

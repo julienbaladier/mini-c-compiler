@@ -42,8 +42,7 @@ int						{return tINT;}
 						}
 
 {letter}[a-zA-Z0-9_]*	{
-							yylval.var = malloc(sizeof(yyleng));
-							strcpy(yytext, yylval.var);
+							yylval.var = strdup(yytext);
 							return tID;
 						}
 

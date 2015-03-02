@@ -1,10 +1,12 @@
 %{
 	#include <stdlib.h>
 	#include <stdio.h>
+	#include "SymbolesTable/SymbolesTable.h"
 	int yylex(void);
 	void yyerror (char const *msg);
 	extern FILE *yyin;
 	extern int yylineno;
+	llist * symboles_table;
 %}
 
 %union { int nb; char * var; }
@@ -14,13 +16,14 @@
 %token tCOMMA tSEMICOLON
 %token tCONST tINT 
 %token tADD tMINUS tMUL tDIV tEQUAL
+%token tINTEGER_EXP_FORM tINTEGER_DEC_FORM
+%token tID
 %token tERROR
 
-%token <nb> tINTEGER_EXP_FORM
-%token <nb> tINTEGER_DEC_FORM
-%token <var> tID
+%type <nb> tINTEGER_EXP_FORM tINTEGER_DEC_FORM
+%type <var> tID affection_and_id_list affectation
 
-// priorité des opérateurs %left %right
+
 %left tADD tMINUS
 %left tMUL tDIV
 
@@ -37,9 +40,9 @@ start:					declaration_list main
 
 /**********************************MAIN***************************************/
 
-main:					tINT tMAIN tOPENED_PARENTHESIS tCLOSED_PARENTHESIS tOPENED_BRACKET { printf("Debut MAIN !\n"); }
+main:					tINT tMAIN tOPENED_PARENTHESIS tCLOSED_PARENTHESIS tOPENED_BRACKET
 						declaration_list instruction_list 
-						tCLOSED_BRACKET { printf("Fin MAIN !\n"); }
+						tCLOSED_BRACKET
 						;
 
 
@@ -58,11 +61,13 @@ declaration:			declaration_constante
 			 			;
 
 
-declaration_constante:	tCONST tINT affectation_list	tSEMICOLON { printf("Déclaration CONSTANTE!\n"); }	
+declaration_constante:	tCONST tINT affectation_list_declaration tSEMICOLON	
 						;
+						//si elle existe grosse erreur
+						//sinon on l'a crée
 
 
-declaration_integer:	tINT affection_and_id_list tSEMICOLON { printf("Déclaration VARIABLE!\n"); }
+declaration_integer:	tINT affection_and_id_list tSEMICOLON
 						;
 
 
@@ -71,18 +76,99 @@ declaration_integer:	tINT affection_and_id_list tSEMICOLON { printf("Déclaratio
 
 /*******************************AFFECTATIONS**********************************/
 
-affection_and_id_list:	affectation
-						| tID { printf("ID!\n"); }
-						| affectation tCOMMA affection_and_id_list 
-						| tID tCOMMA affection_and_id_list { printf("Plusieurs\n"); } 
-						;
+affection_and_id_list:				affectation
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												ajouterSymbole(symboles_table, $1, false, true);
+											}else {
+												yyerror("Déclaration d'un int déjà déclarée !");
+											}
+										}
+									|tID
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												ajouterSymbole(symboles_table, $1, false, false);
+											}else {
+												yyerror("Déclaration d'un int déjà déclarée !");
+											}
+										}
+									|affectation tCOMMA affection_and_id_list
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												ajouterSymbole(symboles_table, $1, false, true);
+											}else {
+												yyerror("Déclaration d'un int déjà déclarée !");
+											}
+										} 
+									|tID tCOMMA affection_and_id_list
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												ajouterSymbole(symboles_table, $1, false, false);
+											}else {
+												yyerror("Déclaration d'un int déjà déclarée !");
+											}
+										}
+									;
 
-affectation_list:		affectation 
-						|affectation tCOMMA affectation_list { printf("Plusieurs\n"); } 
-						;
 
-affectation:			tID tEQUAL calculation { printf("AFFECTATION!\n"); }
-						;
+
+
+
+affectation_list_declaration:		affectation 
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												ajouterSymbole(symboles_table, $1, true, true);
+											}else {
+												yyerror("Déclaration d'un const int déjà déclarée !");
+											}
+										}
+									|affectation tCOMMA affectation_list_declaration
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												ajouterSymbole(symboles_table, $1, true, true);
+											}else {
+												yyerror("Déclaration d'un const int déjà déclarée !");
+											}
+										}
+									;
+
+
+
+
+affectation_list_instruction:		affectation 
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												yyerror("Utilisation d'une variable non déclarée !");
+											}else if(symbole->constant == true){
+												yyerror("Affectation pour une constante pas possible neguaa !");
+											}else if(symbole->initialised == false){
+												symbole->initialised = true;
+											}
+										}
+									|affectation tCOMMA affectation_list_instruction
+										{
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if(symbole == NULL){
+												yyerror("Utilisation d'une variable non déclarée !");
+											}else if(symbole->constant == true){
+												yyerror("Affectation pour une constante pas possible neguaa !");
+											}else if(symbole->initialised == false){
+												symbole->initialised = true;
+											}
+										}
+									;
+
+
+
+affectation:						tID tEQUAL calculation { $$ = $1; }
+									;
 
 
 /*******************************INSTRUCTIONS**********************************/
@@ -93,8 +179,16 @@ instruction_list:		/* Nothing */
 						;
 
 
-instruction:			affectation tSEMICOLON
-						|tPRINTF tOPENED_PARENTHESIS tID tCLOSED_PARENTHESIS tSEMICOLON { printf("PRINTF!\n"); }
+instruction:			affectation_list_instruction tSEMICOLON
+						|tPRINTF tOPENED_PARENTHESIS tID tCLOSED_PARENTHESIS tSEMICOLON
+							{	
+								Symbole * symbole = findSymbole(*symboles_table, $3);
+								if(symbole == NULL){
+									yyerror("Utilisation d'une variable non déclarée !");
+								}else if(symbole->initialised == false){
+									yyerror("Utilisation d'une variable non initialisée !");
+								}
+							}
 						;
 
 
@@ -104,15 +198,24 @@ instruction:			affectation tSEMICOLON
 /**********************************MATH*************************************/
 
 
-operator: 			   tADD { printf("+"); }
-		  			   |tMINUS { printf("-"); }
-		  			   |tMUL { printf("*"); }
-		  			   |tDIV { printf("/"); }
+operator: 			   tADD
+		  			   |tMINUS
+		  			   |tMUL
+		  			   |tDIV
 		  			   ;
 
-operand: 			   tID { printf("%s", yylval.var ); }
-		 			   |tINTEGER_EXP_FORM { printf("%d", yylval.nb ); }
-		 			   |tINTEGER_DEC_FORM 
+operand: 			   tID 
+							{ 
+								Symbole * symbole = findSymbole(*symboles_table, $1);
+								if(symbole == NULL){
+									yyerror("Utilisation d'une variable non déclarée !");
+								}else if(symbole->initialised == false){
+									yyerror("Utilisation d'une variable non initialisée !");
+								}
+							}
+
+		 			   |tINTEGER_EXP_FORM
+		 			   |tINTEGER_DEC_FORM
 		 			   |tMINUS tINTEGER_EXP_FORM
 		 			   |tMINUS tINTEGER_DEC_FORM
 		 			   |tADD tINTEGER_EXP_FORM
@@ -120,7 +223,7 @@ operand: 			   tID { printf("%s", yylval.var ); }
 		 			   ;
 
 calculation: 		   operand
-			 		   |tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS { printf("\n"); }
+			 		   |tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS
 			 		   |calculation operator calculation
 			 		   ;
 
@@ -130,6 +233,7 @@ calculation: 		   operand
 int main(int argc, char *argv[]){
 
 	yyin = fopen(argv[1], "r");
+	symboles_table = symbolesTableCreate();
 
 	switch (yyparse()){
 		case 0 :
@@ -150,6 +254,8 @@ int main(int argc, char *argv[]){
 
 	fclose(yyin);
 
+	printSymbolesTable(*symboles_table);
+
     return 0;
 }
 
@@ -158,5 +264,6 @@ int main(int argc, char *argv[]){
 
 void yyerror(char const *s) {
 	printf("%d : %s\n", yylineno, s);
+	// ajouter des | error
 }
 

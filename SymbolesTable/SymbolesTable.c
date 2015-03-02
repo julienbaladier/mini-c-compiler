@@ -54,9 +54,9 @@ void printSymbolesTable(llist symboles_table){
 	print_list(&symboles_table);
 }
 
-Symbole * findSymbole(llist* symboles_table, const char * p_name){
+Symbole * findSymbole(llist symboles_table, const char * p_name){
 
-	list_node * node = list_find_by_data(symboles_table, (void *) p_name);
+	list_node * node = list_find_by_data(&symboles_table, (void *) p_name);
 
 	if(node != NULL){
 		return (Symbole *)node->data;
