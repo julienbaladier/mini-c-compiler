@@ -32,7 +32,7 @@ void printSymbole(void * data){
 
 
 //Création de la fonction de comparaison
-llist* Symboles_table_create(){
+llist* symbolesTableCreate(){
 	return list_create(&idCmpSymbole, &printSymbole);
 };
 
@@ -50,8 +50,8 @@ Symbole* ajouterSymbole(llist * symboles_table, const char * p_name, bool consta
 	return (node ? (Symbole*)node->data : NULL);	 
 }
 
-void printSymbolesTable(llist* symboles_table){
-	print_list(symboles_table);
+void printSymbolesTable(llist symboles_table){
+	print_list(&symboles_table);
 }
 
 Symbole * findSymbole(llist* symboles_table, const char * p_name){
