@@ -4,6 +4,8 @@
 #include <stdlib.h>
 
 
+
+
 //int nameCmpSymbole(list_node * node, const char * id)
 int idCmpSymbole(list_node * node, void * p_name){
 	// printf("%s\n", (const char *)p_name);
@@ -48,6 +50,20 @@ Symbole* ajouterSymbole(llist * symboles_table, const char * p_name, bool consta
 		p_symbole->initialised = initialised;
 	}
 	return (node ? (Symbole*)node->data : NULL);	 
+}
+
+Symbole* pushTempSymbole(llist * symboles_table){
+	Symbole * p_symbole = (Symbole *) malloc(sizeof(Symbole));
+	list_node * node = list_insert_beginning(symboles_table, p_symbole);
+	p_symbole->id = symboles_table->node_number; p_symbole->p_name = DEFAULT_TEMP_SYMBOLE_NAME;
+	p_symbole->constant = true;
+	p_symbole->initialised = true;
+
+	return (node ? (Symbole*)node->data : NULL);	 
+}
+
+Symbole* popTempSymbole(llist * symboles_table){
+	return (Symbole*)list_pop(symboles_table); 
 }
 
 void printSymbolesTable(llist symboles_table){

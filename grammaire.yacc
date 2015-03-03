@@ -20,7 +20,7 @@
 %token tID
 %token tERROR
 
-%type <nb> tINTEGER_EXP_FORM tINTEGER_DEC_FORM
+%type <nb> tINTEGER_EXP_FORM tINTEGER_DEC_FORM operator
 %type <var> tID affection_and_id_list affectation
 
 
@@ -40,7 +40,7 @@ start:					declaration_list main
 
 /**********************************MAIN***************************************/
 
-main:					tINT tMAIN tOPENED_PARENTHESIS tCLOSED_PARENTHESIS tOPENED_BRACKET
+main:					tINT tMAIN tOPENED_PARENTHESIS tCLOSED_PARENTHESIS tOPENED_BRACKET { printf("main :\n"); }
 						declaration_list instruction_list 
 						tCLOSED_BRACKET
 						;
@@ -63,8 +63,6 @@ declaration:			declaration_constante
 
 declaration_constante:	tCONST tINT affectation_list_declaration tSEMICOLON	
 						;
-						//si elle existe grosse erreur
-						//sinon on l'a crée
 
 
 declaration_integer:	tINT affection_and_id_list tSEMICOLON
@@ -167,7 +165,22 @@ affectation_list_instruction:		affectation
 
 
 
-affectation:						tID tEQUAL calculation { $$ = $1; }
+affectation:						tID tEQUAL calculation 
+										{ 
+											int variable_address = 0;
+											Symbole * symbole = findSymbole(*symboles_table, $1);
+											if (symbole != NULL){
+												variable_address = symbole->id;
+												symbole = popTempSymbole(symboles_table);
+											}else{
+												symbole = popTempSymbole(symboles_table);
+												variable_address = symbole->id;
+											}
+											
+											printf("\t5 @%d @%d\n", variable_address, symbole->id);
+											$$ = $1;
+											
+										}
 									;
 
 
@@ -187,6 +200,8 @@ instruction:			affectation_list_instruction tSEMICOLON
 									yyerror("Utilisation d'une variable non déclarée !");
 								}else if(symbole->initialised == false){
 									yyerror("Utilisation d'une variable non initialisée !");
+								}else{
+									printf("\tPRI @%d\n", symbole->id);
 								}
 							}
 						;
@@ -198,10 +213,10 @@ instruction:			affectation_list_instruction tSEMICOLON
 /**********************************MATH*************************************/
 
 
-operator: 			   tADD
-		  			   |tMINUS
-		  			   |tMUL
-		  			   |tDIV
+operator: 			   tADD { $$ = 1; }
+		  			   |tMINUS { $$ = 3; }
+		  			   |tMUL { $$ = 2; }
+		  			   |tDIV { $$ = 4; }
 		  			   ;
 
 operand: 			   tID 
@@ -214,18 +229,48 @@ operand: 			   tID
 								}
 							}
 
-		 			   |tINTEGER_EXP_FORM
-		 			   |tINTEGER_DEC_FORM
-		 			   |tMINUS tINTEGER_EXP_FORM
-		 			   |tMINUS tINTEGER_DEC_FORM
-		 			   |tADD tINTEGER_EXP_FORM
-		 			   |tADD tINTEGER_DEC_FORM
+		 			   |tINTEGER_EXP_FORM { pushTempSymbole(symboles_table); }
+		 			   |tINTEGER_DEC_FORM { pushTempSymbole(symboles_table); }
+		 			   |tMINUS tINTEGER_EXP_FORM 
+		 			   		{ 
+		 			   			Symbole * symbole = pushTempSymbole(symboles_table);
+		 			   			// AFC @+1 0
+		 			   			printf("\t6 @%d 0\n", symbole->id);
+		 			   			symbole = pushTempSymbole(symboles_table);
+		 			   			printf("\t6 @%d %d\n", symbole->id, $2);
+		 			   			// SUB @init+1 @init+1 @init+2 
+		 			   			printf("\t3 @%d @%d @%d\n", symbole->id-1, symbole->id-1, symbole->id);
+		 			   			symbole = popTempSymbole(symboles_table);
+		 			   			//il reste le resultat en temp sur la pile
+		 			   		}
+		 			   |tMINUS tINTEGER_DEC_FORM 
+		 			   		{ 
+		 			   			Symbole * symbole = pushTempSymbole(symboles_table);
+		 			   			// AFC @+1 0
+		 			   			printf("\t6 @%d 0\n", symbole->id);
+		 			   			symbole = pushTempSymbole(symboles_table);
+		 			   			printf("\t6 @%d @%d\n", symbole->id, $2);
+		 			   			// SUB @init+1 @init+1 @init+2 
+		 			   			printf("\t3 @%d @%d @%d\n", symbole->id-1, symbole->id-1, symbole->id);
+		 			   			symbole = popTempSymbole(symboles_table);
+		 			   			//il reste le resultat en temp sur la pile
+		 			   		}
+		 			   |tADD tINTEGER_EXP_FORM { pushTempSymbole(symboles_table); }
+		 			   |tADD tINTEGER_DEC_FORM { pushTempSymbole(symboles_table); }
 		 			   ;
 
 calculation: 		   operand
 			 		   |tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS
-			 		   |calculation operator calculation
+			 		   |calculation operator calculation 
+			 		   		{
+			 		   			Symbole * calc_result2 = popTempSymbole(symboles_table);
+			 		   			Symbole * calc_result1 = popTempSymbole(symboles_table);
+			 		   			Symbole * result = pushTempSymbole(symboles_table);
+			 		   			// OPP @init+1 @init+1 @init+2 
+			 		   			printf("\t%d @%d @%d @%d\n", $2, result->id, calc_result1->id, calc_result2->id);
+			 		   		}
 			 		   ;
+
 
 
 %%

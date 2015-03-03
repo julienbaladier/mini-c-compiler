@@ -1,11 +1,9 @@
 int main(){
 	int j, i, w = 34;
-	const int u = 34, k = 32;
-	int k = 32;
-	const int p = 32;
+	const int u = 3*4;
 
-	i=3;
+	j=-4*(45+4);
+	printf(j);
 
-	k = 32;
 
 }

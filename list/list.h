@@ -34,6 +34,7 @@ void *list_pop(llist *l);
 #define list_remove_by_data(l, d) list_remove(l, list_find_by_data(l, d))
 // #define list_find(l, d) list_find_by_data(l, d)
 #define list_insert(l, d) list_insert_beginning(l, d)
+#define list_push(l, d) list_insert_beginning(l, d)
 
 #endif
 
