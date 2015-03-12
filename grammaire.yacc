@@ -301,31 +301,33 @@ affectation_list_instruction:
 affectation_in_affectation_list_instruction:		
 					tID tEQUAL calculation 
 					{ 
-						Symbole * id_symbole = findSymbole(*symboles_table, $1);
-						if(id_symbole == NULL){
-							yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
-						}else if(id_symbole->constant == true){
-							yyerror("Affectation pour une constante impossible.");
-						}else{
 
-							//on supprime le résultat du sommet de la pile
-							Symbole * calc_symbole = popTempSymbole(symboles_table);
+						//on supprime le résultat du sommet de la pile
+						Symbole * calc_symbole = popTempSymbole(symboles_table);
 
-							if(calc_symbole != NULL){
-								//on a un résultat de calcul, on peut faire l'affectation
+						if(calc_symbole != NULL){
+							//on a un résultat de calcul, on peut faire l'affectation
+
+							Symbole * id_symbole = findSymbole(*symboles_table, $1);
+							if(id_symbole == NULL){
+								yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
+							}else if(id_symbole->constant == true){
+								yyerror("Affectation pour une constante impossible.");
+							}else{
 
 								if (id_symbole->initialised == false){
 									id_symbole->initialised = true;
 								}
-								
+							
 								printf("\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
-
-							}else {
-								yyerror("Affectation impossible car erreur lors du calcul.");
+								
 							}
 
-
+						}else {
+							yyerror("Affectation impossible car erreur lors du calcul.");
 						}
+
+
 					}
 
 					|tID tEQUAL calculation_value
@@ -519,6 +521,5 @@ int main(int argc, char *argv[]){
 
 void yyerror(char const *s) {
 	printf("%d : %s\n", yylineno, s);
-	exit(1);
 }
 
