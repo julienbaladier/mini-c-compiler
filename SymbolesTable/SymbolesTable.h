@@ -23,6 +23,7 @@ Symbole* ajouterSymbole(llist * symboles_table, const char * name, bool constant
 Symbole* pushTempSymbole(llist * symboles_table);
 Symbole* popTempSymbole(llist * symboles_table);
 Symbole* findSymbole(llist symboles_table, const char * p_name);
+int getIdTopStack(llist symboles_table);
 void printSymbolesTable(llist symboles_table);
 
 #endif

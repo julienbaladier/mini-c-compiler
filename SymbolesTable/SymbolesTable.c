@@ -30,6 +30,9 @@ void printSymbole(void * data){
 
 }
 
+int getIdTopStack(llist symboles_table){
+	return symboles_table.node_number;
+}
 
 
 
@@ -63,8 +66,15 @@ Symbole* pushTempSymbole(llist * symboles_table){
 }
 
 Symbole* popTempSymbole(llist * symboles_table){
-	return (Symbole*)list_pop(symboles_table); 
+	Symbole * tmp_symbole = findSymbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
+
+	if (tmp_symbole == NULL){
+		return NULL;
+	}else{
+		return (Symbole*)list_pop(symboles_table);
+	}
 }
+
 
 void printSymbolesTable(llist symboles_table){
 	print_list(&symboles_table);
