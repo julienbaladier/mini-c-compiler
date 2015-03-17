@@ -8,6 +8,7 @@
 	int yylex(void);
 	void yyerror (char const *msg);
 	extern FILE *yyin;
+	FILE * output_file;
 	extern int yylineno;
 	llist * symboles_table;
 %}
@@ -46,7 +47,7 @@ start:											declaration_list main
 /**********************************MAIN***************************************/
 
 main:											tINT tMAIN tOPENED_PARENTHESIS tCLOSED_PARENTHESIS tOPENED_BRACKET 
-													{ printf("main :\n"); }
+													{ fprintf(output_file, "main :\n"); }
 												declaration_list instruction_list 
 												tCLOSED_BRACKET
 												;
@@ -100,7 +101,7 @@ instruction:									affectation_list_instruction tSEMICOLON
 														}else if(symbole->initialised == false){
 															yyerror("Utilisation d'une variable non initialisée !");
 														}else{
-															printf("\tPRI @%d\n", symbole->id);
+															fprintf(output_file, "\tPRI @%d\n", symbole->id);
 														}
 													}
 												;
@@ -210,7 +211,7 @@ affectation_in_affection_and_id_list_declaration:
 						if(symbole == NULL){
 							symbole = ajouterSymbole(symboles_table, $1, false, true);
 							//On copie calculation_value à dans l'espace mémoire qu'on vient d'alouer
-							printf("\tAFC @%d %d\n", symbole->id, $3);
+							fprintf(output_file, "\tAFC @%d %d\n", symbole->id, $3);
 						}else {
 							yyerror("Déclaration d'un int déjà déclarée.");
 						}
@@ -232,7 +233,7 @@ affectation_in_affection_and_id_list_declaration:
 								//on est bon, il a pas déjà été déclaré
 								id_symbole = ajouterSymbole(symboles_table, $1, false, true);
 								//On copie la valeur à l'adresse calculation_value à dans l'espace mémoire qu'on vient d'alouer
-								printf("\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+								fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
 							}else{
 								yyerror("Déclaration d'un int déjà déclarée.");
 							}
@@ -291,7 +292,7 @@ affectation_in_affectation_list_declaration:
 							if(symbole == NULL){
 								symbole = ajouterSymbole(symboles_table, $1, true, true);
 								//On copie calculation_value à dans l'espace mémoire qu'on vient d'alouer
-								printf("\tAFC @%d %d\n", symbole->id, $3);
+								fprintf(output_file, "\tAFC @%d %d\n", symbole->id, $3);
 							}else {
 								yyerror("Déclaration d'un const int déjà déclarée.");
 							}
@@ -313,7 +314,7 @@ affectation_in_affectation_list_declaration:
 									//on est bon, il a pas déjà été déclaré
 									id_symbole = ajouterSymbole(symboles_table, $1, true, true);
 									//On copie la valeur à l'adresse calculation_value à dans l'espace mémoire qu'on vient d'alouer
-									printf("\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+									fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
 								}else{
 									yyerror("Déclaration d'un const int déjà déclarée.");
 								}
@@ -358,7 +359,7 @@ affectation_in_affectation_list_instruction:
 									id_symbole->initialised = true;
 								}
 							
-								printf("\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+								fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
 								
 							}
 
@@ -384,7 +385,7 @@ affectation_in_affectation_list_instruction:
 									}
 
 									//On copie calculation_value à dans l'espace mémoire qui été déjà aloué
-									printf("\tAFC @%d %d\n", symbole->id, $3);
+									fprintf(output_file, "\tAFC @%d %d\n", symbole->id, $3);
 
 								}
 								
@@ -412,7 +413,7 @@ affectation_in_affectation_list_instruction:
 										}
 
 										//calculation_variable existe bien
-										printf("\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+										fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
 									}
 										
 
@@ -477,7 +478,7 @@ calculation:
 							}else{
 								//On push le symbole !!!!
 								Symbole * tmp_symbole = pushTempSymbole(symboles_table);
-								printf("\tCOP @%d @%d\n", tmp_symbole->id, symbole->id);
+								fprintf(output_file, "\tCOP @%d @%d\n", tmp_symbole->id, symbole->id);
 							}
 						}
 
@@ -485,7 +486,7 @@ calculation:
 						{
 							//On push le symbole !!!!
 							Symbole * tmp_symbole = pushTempSymbole(symboles_table);
-							printf("\tAFC @%d %d\n", tmp_symbole->id, $1);
+							fprintf(output_file, "\tAFC @%d %d\n", tmp_symbole->id, $1);
 						}
 
 		 			|tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS
@@ -501,7 +502,7 @@ calculation:
 		 		   					yyerror("Erreur sur calcul.");
 		 		   				}else{
 		 		   					//on est bon, on avait bien deux éléments empilé
-		 		   					printf("\t%s @%d @%d @%d\n", $2, tmp_symbole_bottom->id, tmp_symbole_bottom->id, tmp_symbole_top->id);
+		 		   					fprintf(output_file, "\t%s @%d @%d @%d\n", $2, tmp_symbole_bottom->id, tmp_symbole_bottom->id, tmp_symbole_top->id);
 		 		   				}
 		 		   			}
 		 		   			
@@ -513,9 +514,9 @@ calculation:
 		 		   				yyerror("Erreur sur calcul.");
 		 		   			}else{
 		 		   				Symbole * symbole = pushTempSymbole(symboles_table);
-					   				printf("\tAFC @%d 0\n", symbole->id);
+					   				fprintf(output_file, "\tAFC @%d 0\n", symbole->id);
 
-					   				printf("\tSOU @%d @%d @%d\n", tmp_symbole->id, tmp_symbole->id, symbole->id);
+					   				fprintf(output_file, "\tSOU @%d @%d @%d\n", tmp_symbole->id, tmp_symbole->id, symbole->id);
 					   				symbole = popTempSymbole(symboles_table);
 		 		   			}
 					   			
@@ -540,7 +541,6 @@ int main(int argc, char *argv[]){
 	int oc;	/* option character */
 	char * output_file_name = NULL; /* space to store output file name pointer */
 	opterr= 0; /* disable default error messages */
-	FILE * output_file;
 
 	while ((oc = getopt(argc, argv, ":o:")) != -1) {
 		switch (oc) {
@@ -592,6 +592,8 @@ int main(int argc, char *argv[]){
 		switch (yyparse()){
 			case 0 :
 			 printf("Parsing was successful !!\n");
+			 printf("Table des symboles :\n");
+			 printSymbolesTable(*symboles_table);
 			 break;
 
 			case 1 :
@@ -608,9 +610,6 @@ int main(int argc, char *argv[]){
 
 		fclose(output_file);
 		fclose(yyin);
-
-		printf("\nTable des symboles :\n");
-		printSymbolesTable(*symboles_table);
 
 	}
 	
