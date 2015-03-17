@@ -15,12 +15,18 @@ exposant  [eE][+-]?{integer}
 
 %%
 
-main					{return tMAIN;}
-printf					{return tPRINTF;}
+"main"					{return tMAIN;}
+"printf"				{return tPRINTF;}
 "{"						{return tOPENED_BRACKET;}
 "}"						{return tCLOSED_BRACKET;}
-const					{return tCONST;}
-int						{return tINT;}
+"const"					{return tCONST;}
+"if"					{return tIF;}
+"else"					{return tELSE;}
+"while"					{return tWHILE;}
+"int"					{return tINT;}
+"!"						{return tNOT;}
+">"						{return tGREATERTHAN;}
+"<"						{return tLOWERTHAN;}
 "+"						{return tADD;}
 "-"						{return tMINUS;}
 "*"						{return tMUL;}
