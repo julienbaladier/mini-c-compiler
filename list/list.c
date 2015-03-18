@@ -24,17 +24,21 @@ llist* list_create(int (*CmpFunc)(list_node*,void*), void (*DpyFunc)(void * data
 }
 
 
-void print_list(llist *l){
+void list_print(llist l){
 	list_node *it;
-	if (l->node == NULL){
+	if (l.node == NULL){
 		printf("La liste est vide !\n");
 	} else {
-		it = l->node;
+		it = l.node;
 		while(it != NULL){
-			l->DpyFunc(it->data); printf("\n");
+			l.DpyFunc(it->data);
 			it = it->next;
 		}
 	}
+}
+
+int list_isempty(llist l){
+	return l.node_number == 0;
 }
 
 

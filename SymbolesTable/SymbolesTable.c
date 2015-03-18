@@ -27,7 +27,7 @@ void printSymbole(void * data){
 	}else{
 		printf("not initialised");
 	}
-
+	printf("\n");
 }
 
 int getIdTopStack(llist symboles_table){
@@ -77,7 +77,7 @@ Symbole* popTempSymbole(llist * symboles_table){
 
 
 void printSymbolesTable(llist symboles_table){
-	print_list(&symboles_table);
+	list_print(symboles_table);
 }
 
 Symbole * findSymbole(llist symboles_table, const char * p_name){

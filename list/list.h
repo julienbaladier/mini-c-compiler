@@ -15,7 +15,8 @@ typedef struct llist {
 
 /* linked list */
 llist* list_create(int (*CmpFunc)(list_node*,void*), void (*DpyFunc)(void * data));
-void print_list(llist *l);
+void list_print(llist l);
+int list_isempty(llist l);
 void list_destroy(llist *list);
 list_node* list_node_create(void *data);
 void list_node_destroy(list_node *node);
