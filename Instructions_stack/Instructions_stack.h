@@ -6,7 +6,7 @@
 
 
 typedef struct Instruction{
-	unsigned int ui_number;
+	unsigned int ui_address;
 	long l_position;
 	bool b_incomplete;
 } Instruction;
@@ -19,7 +19,7 @@ llist* create_instructions_stack();
 void print_instructions_stack(llist instructions_stack);
 
 /* Méthode qui permet d'empiler un élément */
-Instruction  *push_instruction(llist * instructions_stack, int ui_number, long l_position, bool b_incomplete);
+Instruction  *push_instruction(llist * instructions_stack, int ui_address, long l_position, bool b_incomplete);
 
 /* Méthode qui permet dépiler un élément */
 Instruction *pop_instruction(llist * instructions_stack);

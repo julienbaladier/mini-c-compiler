@@ -12,6 +12,7 @@ int cmp_symbole(list_node * node, void * p_name){
 	return strcmp (((Symbole *)node->data)->p_name, (const char *)p_name);
 }
 
+
 void print_symbole(void * data){
 	printf("%d\t\t%s\t\t", ((Symbole *)data)->id, ((Symbole *)data)->p_name);
 	if (((Symbole *)data)->constant){
@@ -30,8 +31,10 @@ void print_symbole(void * data){
 	printf("\n");
 }
 
-int getIdTopStack(llist symboles_table){
-	return symboles_table.node_number;
+
+
+int get_top_stack_symbole_id(llist symboles_table){
+	return symboles_table.node_number - 1;
 }
 
 
