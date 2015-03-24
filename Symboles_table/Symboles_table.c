@@ -1,4 +1,4 @@
-#include "SymbolesTable.h"
+#include "Symboles_table.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -7,12 +7,12 @@
 
 
 //int nameCmpSymbole(list_node * node, const char * id)
-int idCmpSymbole(list_node * node, void * p_name){
+int cmp_symbole(list_node * node, void * p_name){
 	// printf("%s\n", (const char *)p_name);
 	return strcmp (((Symbole *)node->data)->p_name, (const char *)p_name);
 }
 
-void printSymbole(void * data){
+void print_symbole(void * data){
 	printf("%d\t\t%s\t\t", ((Symbole *)data)->id, ((Symbole *)data)->p_name);
 	if (((Symbole *)data)->constant){
 		printf("      constant");
@@ -37,12 +37,12 @@ int getIdTopStack(llist symboles_table){
 
 
 //Création de la fonction de comparaison
-llist* symbolesTableCreate(){
-	return list_create(&idCmpSymbole, &printSymbole);
+llist* create_symboles_table(){
+	return list_create(&cmp_symbole, &print_symbole);
 };
 
 
-Symbole* ajouterSymbole(llist * symboles_table, const char * p_name, bool constant, bool initialised){
+Symbole* add_symbole(llist * symboles_table, const char * p_name, bool constant, bool initialised){
 	Symbole * p_symbole = (Symbole *) malloc(sizeof(Symbole));
 	list_node * node = list_insert_beginning(symboles_table, p_symbole);
 	p_symbole->id = symboles_table->node_number; p_symbole->p_name = p_name;
@@ -55,7 +55,7 @@ Symbole* ajouterSymbole(llist * symboles_table, const char * p_name, bool consta
 	return (node ? (Symbole*)node->data : NULL);	 
 }
 
-Symbole* pushTempSymbole(llist * symboles_table){
+Symbole* push_temp_symbole(llist * symboles_table){
 	Symbole * p_symbole = (Symbole *) malloc(sizeof(Symbole));
 	list_node * node = list_insert_beginning(symboles_table, p_symbole);
 	p_symbole->id = symboles_table->node_number; p_symbole->p_name = DEFAULT_TEMP_SYMBOLE_NAME;
@@ -65,8 +65,8 @@ Symbole* pushTempSymbole(llist * symboles_table){
 	return (node ? (Symbole*)node->data : NULL);	 
 }
 
-Symbole* popTempSymbole(llist * symboles_table){
-	Symbole * tmp_symbole = findSymbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
+Symbole* pop_temp_symbole(llist * symboles_table){
+	Symbole * tmp_symbole = find_symbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
 
 	if (tmp_symbole == NULL){
 		return NULL;
@@ -76,11 +76,11 @@ Symbole* popTempSymbole(llist * symboles_table){
 }
 
 
-void printSymbolesTable(llist symboles_table){
+void print_symboles_table(llist symboles_table){
 	list_print(symboles_table);
 }
 
-Symbole * findSymbole(llist symboles_table, const char * p_name){
+Symbole * find_symbole(llist symboles_table, const char * p_name){
 
 	list_node * node = list_find_by_data(&symboles_table, (void *) p_name);
 

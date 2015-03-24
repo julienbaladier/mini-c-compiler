@@ -6,13 +6,13 @@
 
 
 int cmp_instructions(list_node * node, void * instruction){
-	return ((Instruction *)node->data)->i_instruction_number 
-			== ((Instruction *)instruction)->i_instruction_number;
+	return ((Instruction *)node->data)->ui_number 
+			== ((Instruction *)instruction)->ui_number;
 }
 
 void print_instruction(void * data){
 	printf("Instruction number : %d | Position : %ld | ", 
-		((Instruction *)data)->i_instruction_number, ((Instruction *)data)->l_position);
+		((Instruction *)data)->ui_number, ((Instruction *)data)->l_position);
 	if (((Instruction *)data)->b_incomplete){
 		printf("Written");
 	}else{
@@ -33,9 +33,9 @@ void print_instructions_stack(llist instructions_stack){
 }
 
 /* Méthode qui permet d'empiler un élément */
-Instruction  *push_instruction(llist * instructions_stack, int i_instruction_number, long l_position, bool b_incomplete){
+Instruction  *push_instruction(llist * instructions_stack, int ui_number, long l_position, bool b_incomplete){
 	Instruction *instruction = (Instruction *) malloc(sizeof(Instruction));
-	instruction->i_instruction_number = i_instruction_number;
+	instruction->ui_number = ui_number;
 	instruction->l_position = l_position;
 	instruction->b_incomplete = b_incomplete;
 	list_node *node = list_insert_beginning(instructions_stack, instruction);

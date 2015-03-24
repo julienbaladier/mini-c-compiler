@@ -4,13 +4,19 @@
 	#include <unistd.h>
 	#include <string.h>
 	#include <ctype.h>
-	#include "SymbolesTable/SymbolesTable.h"
+	#include <stdbool.h>
+	#include "Symboles_table/Symboles_table.h"
+	#include "Instructions_stack/Instructions_stack.h"
 	int yylex(void);
 	void yyerror (char const *msg);
 	extern FILE *yyin;
-	FILE * output_file;
+	FILE * temp_file;
 	extern int yylineno;
 	llist * symboles_table;
+	llist * instructions_stack;
+	unsigned int ui_current_instruction_number = 0;
+	unsigned int ui_compilation_errors_nb = 0;
+	unsigned int ui_if_clause_nb = 0;
 %}
 
 %union { int nb; char * var; }
@@ -47,7 +53,9 @@ start:											declaration_list main
 /**********************************MAIN***************************************/
 
 main:											tINT tMAIN tOPENED_PARENTHESIS tCLOSED_PARENTHESIS tOPENED_BRACKET 
-													{ fprintf(output_file, "main :\n"); }
+													{ 
+														fprintf(temp_file, "main :\n"); 
+													}
 												declaration_list instruction_list 
 												tCLOSED_BRACKET
 												;
@@ -87,24 +95,100 @@ declaration_integer:							tINT affection_and_id_list_declaration tSEMICOLON
 /*******************************INSTRUCTIONS**********************************/
 
 
-instruction_list:								/* Nothing */
-												|instruction instruction_list
-												;
+instruction_list:								
+					/* Nothing */
+					|instruction instruction_list
+					;
 
 
-instruction:									affectation_list_instruction tSEMICOLON
-												|tPRINTF tOPENED_PARENTHESIS tID tCLOSED_PARENTHESIS tSEMICOLON
-													{	
-														Symbole * symbole = findSymbole(*symboles_table, $3);
-														if(symbole == NULL){
-															yyerror("Utilisation d'une variable non déclarée !");
-														}else if(symbole->initialised == false){
-															yyerror("Utilisation d'une variable non initialisée !");
-														}else{
-															fprintf(output_file, "\tPRI @%d\n", symbole->id);
-														}
-													}
-												;
+instruction:									
+					affectation_list_instruction tSEMICOLON
+					|if_structure
+						{
+							for (unsigned int i = ui_if_clause_nb; i > 0; --i){
+		
+								Instruction * instruction = pop_instruction(instructions_stack);
+
+								FILE * new_temp_file = tmpfile();
+								rewind(temp_file);
+								int c = 0;
+								for (long i = 0; i < instruction->l_position; ++i){
+									c = fgetc(temp_file);
+									fputc(c, new_temp_file);
+								}
+
+								fprintf(new_temp_file, "%d\n", ui_current_instruction_number+1); // il faut sauter après le dernier jump pour poursuivre
+
+								while( ( c = fgetc(temp_file) ) != EOF ){
+									fputc(c, new_temp_file);
+								}
+
+								fclose(temp_file);
+
+								temp_file = new_temp_file;
+
+
+							}
+
+							// on revient à la bonne position
+							if(fseek (temp_file, 0, SEEK_END)){
+								printf("fseek error\n");
+							}
+						}
+					|while_structure
+						{
+							Instruction * instruction = pop_instruction(instructions_stack);
+
+							ui_current_instruction_number++;
+							//On place le curseur au bon endroit
+							if(fseek (temp_file, instruction->l_position, SEEK_SET)){
+								printf("fseek error\n");
+							}
+
+
+							FILE * new_temp_file = tmpfile();
+							rewind(temp_file);
+							int c = 0;
+							for (long i = 0; i < instruction->l_position; ++i){
+								c = fgetc(temp_file);
+								fputc(c, new_temp_file);
+							}
+
+							fprintf(new_temp_file, "%d\n", ui_current_instruction_number+1); // il faut sauter après le dernier jump pour poursuivre
+
+							while( ( c = fgetc(temp_file) ) != EOF ){
+								fputc(c, new_temp_file);
+							}
+
+							fclose(temp_file);
+
+							temp_file = new_temp_file;
+
+							
+								// on revient à la bonne position
+							if(fseek (temp_file, 0, SEEK_END)){
+								printf("fseek error\n");
+							}
+
+							instruction = pop_instruction(instructions_stack);
+							//saut inconditionnel en haut de la condition du while
+							
+							fprintf(temp_file, "JMP %d\n", instruction->ui_number);
+
+						}
+					|tPRINTF tOPENED_PARENTHESIS tID tCLOSED_PARENTHESIS tSEMICOLON
+						{	
+							Symbole * symbole = find_symbole(*symboles_table, $3);
+							if(symbole == NULL){
+								yyerror("Utilisation d'une variable non déclarée !");
+							}else if(symbole->initialised == false){
+								yyerror("Utilisation d'une variable non initialisée !");
+							}else{
+								fprintf(temp_file, "\tPRI @%d\n", symbole->id);
+								ui_current_instruction_number++;
+							}
+						}
+					;
 
 
 
@@ -117,13 +201,65 @@ instruction:									affectation_list_instruction tSEMICOLON
 
 if_structure:		
 					if_clause
-					|if_clause tELSE if_clause
-					|if_clause else_clause
+					|if_clause 
+						{
+							ui_if_clause_nb++;
+
+							Instruction * instruction = pop_instruction(instructions_stack);
+
+
+							FILE * new_temp_file = tmpfile();
+							rewind(temp_file);
+							int c = 0;
+							for (long i = 0; i < instruction->l_position; ++i){
+								c = fgetc(temp_file);
+								fputc(c, new_temp_file);
+							}
+
+							fprintf(new_temp_file, "%d\n", ui_current_instruction_number+1); // il faut sauter après le dernier jump pour poursuivre
+
+							while( ( c = fgetc(temp_file) ) != EOF ){
+								fputc(c, new_temp_file);
+							}
+
+							fclose(temp_file);
+
+							temp_file = new_temp_file;
+
+							
+							// on revient à la bonne position
+							if(fseek (temp_file, 0, SEEK_END)){
+								printf("fseek error\n");
+							}
+
+							ui_current_instruction_number++;
+							fprintf(temp_file, "JMP ");
+							push_instruction(instructions_stack, ui_current_instruction_number, ftell(temp_file), false);
+						}
+					 else_structure
+					;
+
+
+else_structure:
+					tELSE if_structure
+					|else_clause
 					;
 
 if_clause:			
 					tIF tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS tOPENED_BRACKET
-					instruction_list 
+						{
+							// on fait un pop du résultat du calcul
+							Symbole * symbole = pop_temp_symbole(symboles_table);
+							if (symbole == NULL){
+								yyerror("Condition du if incorrecte.");
+							}else{
+								ui_current_instruction_number++; /* on aura une instruction jump conditionnel ici */
+								fprintf(temp_file, "JMF @%d ", symbole->id);
+								push_instruction(instructions_stack, ui_current_instruction_number, ftell(temp_file), false);
+								// @1 saut si la condition est fausse
+							}
+						}
+					instruction_list
 					tCLOSED_BRACKET
 					;
 
@@ -135,15 +271,57 @@ else_clause:
 
 
 
+
+
+
 /***************************************WHILE*****************************************/
 
 
 while_structure:	
-					tWHILE tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS tOPENED_BRACKET
+					while_structure_beginning
+					calculation tCLOSED_PARENTHESIS tOPENED_BRACKET
+						{	
+							// on fait un pop du résultat du calcul
+							Symbole * symbole = pop_temp_symbole(symboles_table);
+							if (symbole == NULL){
+								yyerror("Condition du while incorrecte.");
+							}else{
+								ui_current_instruction_number++; /* on aura une instruction jump conditionnel ici */
+								fprintf(temp_file, "JMF @%d ", symbole->id);
+								push_instruction(instructions_stack, ui_current_instruction_number, ftell(temp_file), false);
+								// @1 saut si la condition est fausse
+							}
+						}
+					instruction_list tCLOSED_BRACKET
+					|while_structure_beginning
+					calculation_variable tCLOSED_PARENTHESIS tOPENED_BRACKET
+						{	
+							Symbole * symbole = find_symbole(*symboles_table, $2);
+							if(symbole == NULL){
+								yyerror("Utilisation d'une variable non déclarée, condition invalide.");
+							}else if(symbole->initialised == false){
+								yyerror("Utilisation d'une variable non initialisée, condition invalide.");
+							}else{
+								ui_current_instruction_number++;
+								fprintf(temp_file, "JMF @%d ", symbole->id);
+								push_instruction(instructions_stack, ui_current_instruction_number, ftell(temp_file), false);
+							}
+
+
+						}
 					instruction_list 
 					tCLOSED_BRACKET
 					;
 
+
+while_structure_beginning:	
+					tWHILE tOPENED_PARENTHESIS
+						{
+							//on push prochaine ligne, c'est la qu'il faudra sauter pour reboucler
+							push_instruction(instructions_stack, ui_current_instruction_number + 1, ftell(temp_file), true);
+
+						}
+					;
 
 
 /*******************************AFFECTATIONS**********************************/
@@ -157,13 +335,15 @@ affection_and_id_list_declaration:
 					;
 
 
+
+
 id_in_affection_and_id_list_declaration:					
 					tID
 					{	
 						// On ajoute ce int (non initialisé) à la table des symboles s'il n'a pas encore été déclaré
-						Symbole * symbole = findSymbole(*symboles_table, $1);
+						Symbole * symbole = find_symbole(*symboles_table, $1);
 						if(symbole == NULL){
-							ajouterSymbole(symboles_table, $1, false, false);
+							add_symbole(symboles_table, $1, false, false);
 						}else {
 							yyerror("Déclaration d'un int déjà déclarée.");
 						}
@@ -179,17 +359,17 @@ affectation_in_affection_and_id_list_declaration:
 
 						// On regarde si calcul a bien généré un résultat
 						// Il doit se retrouver au sommet de la pile avec comme nom DEFAULT_TEMP_SYMBOLE_NAME
-						Symbole * symbole = popTempSymbole(symboles_table);
+						Symbole * symbole = pop_temp_symbole(symboles_table);
 
 						if(symbole != NULL){
 							// on a  un résultat
 
 							// On ajoute ce int (initialisé) à la table des symboles s'il n'a pas encore été déclaré
 							// on le met à l'addresse de la varibale temporere du résultat
-							Symbole * new_symbole = findSymbole(*symboles_table, $1);
+							Symbole * new_symbole = find_symbole(*symboles_table, $1);
 							if(new_symbole == NULL){
 								//on ajoute ici à la place du résultat du calcul, pas besoin d'instruction asm
-								new_symbole = ajouterSymbole(symboles_table, $1, false, true);
+								new_symbole = add_symbole(symboles_table, $1, false, true);
 
 								//no asm sinon COP @x @x
 
@@ -207,11 +387,12 @@ affectation_in_affection_and_id_list_declaration:
 				|tID tEQUAL calculation_value
 					{
 						// On ajoute ce int (initialisé) à la table des symboles s'il n'a pas encore été déclaré
-						Symbole * symbole = findSymbole(*symboles_table, $1);
+						Symbole * symbole = find_symbole(*symboles_table, $1);
 						if(symbole == NULL){
-							symbole = ajouterSymbole(symboles_table, $1, false, true);
+							symbole = add_symbole(symboles_table, $1, false, true);
 							//On copie calculation_value à dans l'espace mémoire qu'on vient d'alouer
-							fprintf(output_file, "\tAFC @%d %d\n", symbole->id, $3);
+							fprintf(temp_file, "AFC @%d %d\n", symbole->id, $3);
+							ui_current_instruction_number++;
 						}else {
 							yyerror("Déclaration d'un int déjà déclarée.");
 						}
@@ -221,19 +402,20 @@ affectation_in_affection_and_id_list_declaration:
 				|tID tEQUAL calculation_variable
 					{
 						//on vérifie que calculation_variable existe bien
-						Symbole * calc_symbole = findSymbole(*symboles_table, $3);
+						Symbole * calc_symbole = find_symbole(*symboles_table, $3);
 						if(calc_symbole == NULL){
 							yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
 						}else if(calc_symbole->initialised == false){
 							yyerror("Utilisation d'une variable non initialisée, affectation impossible.");
 						}else{
 							//on teste si tID n'a pas déjà été déclaré
-							Symbole * id_symbole = findSymbole(*symboles_table, $1);
+							Symbole * id_symbole = find_symbole(*symboles_table, $1);
 							if(id_symbole == NULL){
 								//on est bon, il a pas déjà été déclaré
-								id_symbole = ajouterSymbole(symboles_table, $1, false, true);
+								id_symbole = add_symbole(symboles_table, $1, false, true);
 								//On copie la valeur à l'adresse calculation_value à dans l'espace mémoire qu'on vient d'alouer
-								fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+								fprintf(temp_file, "COP @%d @%d\n", id_symbole->id, calc_symbole->id);
+								ui_current_instruction_number++;
 							}else{
 								yyerror("Déclaration d'un int déjà déclarée.");
 							}
@@ -263,17 +445,17 @@ affectation_in_affectation_list_declaration:
 
 						// On regarde si calcul a bien généré un résultat
 						// Il doit se retrouver au sommet de la pile avec comme nom DEFAULT_TEMP_SYMBOLE_NAME
-						Symbole * calc_symbole = popTempSymbole(symboles_table);
+						Symbole * calc_symbole = pop_temp_symbole(symboles_table);
 
 						if(calc_symbole != NULL){
 							// on a  un résultat
 
 							// On ajoute ce const int à la table des symboles s'il n'a pas encore été déclaré
 							// on le met à l'addresse de la varibale temporere du résultat
-							Symbole * new_symbole = findSymbole(*symboles_table, $1);
+							Symbole * new_symbole = find_symbole(*symboles_table, $1);
 							if(new_symbole == NULL){
 								//on ajoute ici à la place du résultat du calcul, pas besoin d'instruction asm
-								new_symbole = ajouterSymbole(symboles_table, $1, true, true);
+								new_symbole = add_symbole(symboles_table, $1, true, true);
 
 							}else {
 								yyerror("Déclaration d'un const int déjà déclarée.");
@@ -288,11 +470,12 @@ affectation_in_affectation_list_declaration:
 					|tID tEQUAL calculation_value
 						{
 							// On ajoute ce const int à la table des symboles s'il n'a pas encore été déclaré
-							Symbole * symbole = findSymbole(*symboles_table, $1);
+							Symbole * symbole = find_symbole(*symboles_table, $1);
 							if(symbole == NULL){
-								symbole = ajouterSymbole(symboles_table, $1, true, true);
+								symbole = add_symbole(symboles_table, $1, true, true);
 								//On copie calculation_value à dans l'espace mémoire qu'on vient d'alouer
-								fprintf(output_file, "\tAFC @%d %d\n", symbole->id, $3);
+								fprintf(temp_file, "AFC @%d %d\n", symbole->id, $3);
+								ui_current_instruction_number++;
 							}else {
 								yyerror("Déclaration d'un const int déjà déclarée.");
 							}
@@ -302,19 +485,20 @@ affectation_in_affectation_list_declaration:
 					|tID tEQUAL calculation_variable
 						{
 							//on vérifie que calculation_variable existe bien
-							Symbole * calc_symbole = findSymbole(*symboles_table, $3);
+							Symbole * calc_symbole = find_symbole(*symboles_table, $3);
 							if(calc_symbole == NULL){
 								yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
 							}else if(calc_symbole->initialised == false){
 								yyerror("Utilisation d'une variable non initialisée, affectation impossible.");
 							}else{
 								//on teste si tID n'a pas déjà été déclaré
-								Symbole * id_symbole = findSymbole(*symboles_table, $1);
+								Symbole * id_symbole = find_symbole(*symboles_table, $1);
 								if(id_symbole == NULL){
 									//on est bon, il a pas déjà été déclaré
-									id_symbole = ajouterSymbole(symboles_table, $1, true, true);
+									id_symbole = add_symbole(symboles_table, $1, true, true);
 									//On copie la valeur à l'adresse calculation_value à dans l'espace mémoire qu'on vient d'alouer
-									fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+									fprintf(temp_file, "COP @%d @%d\n", id_symbole->id, calc_symbole->id);
+									ui_current_instruction_number++;
 								}else{
 									yyerror("Déclaration d'un const int déjà déclarée.");
 								}
@@ -343,12 +527,12 @@ affectation_in_affectation_list_instruction:
 					{ 
 
 						//on supprime le résultat du sommet de la pile
-						Symbole * calc_symbole = popTempSymbole(symboles_table);
+						Symbole * calc_symbole = pop_temp_symbole(symboles_table);
 
 						if(calc_symbole != NULL){
 							//on a un résultat de calcul, on peut faire l'affectation
 
-							Symbole * id_symbole = findSymbole(*symboles_table, $1);
+							Symbole * id_symbole = find_symbole(*symboles_table, $1);
 							if(id_symbole == NULL){
 								yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
 							}else if(id_symbole->constant == true){
@@ -359,8 +543,8 @@ affectation_in_affectation_list_instruction:
 									id_symbole->initialised = true;
 								}
 							
-								fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
-								
+								fprintf(temp_file, "COP @%d @%d\n", id_symbole->id, calc_symbole->id);
+								ui_current_instruction_number++;
 							}
 
 						}else {
@@ -373,7 +557,7 @@ affectation_in_affectation_list_instruction:
 					|tID tEQUAL calculation_value
 							{
 
-								Symbole * symbole = findSymbole(*symboles_table, $1);
+								Symbole * symbole = find_symbole(*symboles_table, $1);
 								if(symbole == NULL){
 									yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
 								}else if(symbole->constant == true){
@@ -385,7 +569,8 @@ affectation_in_affectation_list_instruction:
 									}
 
 									//On copie calculation_value à dans l'espace mémoire qui été déjà aloué
-									fprintf(output_file, "\tAFC @%d %d\n", symbole->id, $3);
+									fprintf(temp_file, "AFC @%d %d\n", symbole->id, $3);
+									ui_current_instruction_number++;
 
 								}
 								
@@ -394,14 +579,14 @@ affectation_in_affectation_list_instruction:
 						{
 
 
-							Symbole * id_symbole = findSymbole(*symboles_table, $1);
+							Symbole * id_symbole = find_symbole(*symboles_table, $1);
 								if(id_symbole == NULL){
 									yyerror("Utilisation d'une variable non déclarée, affectation impossible.");
 								}else if(id_symbole->constant == true){
 									yyerror("Affectation pour une constante impossible.");
 								}else{
 
-									Symbole * calc_symbole = findSymbole(*symboles_table, $3);
+									Symbole * calc_symbole = find_symbole(*symboles_table, $3);
 									if(calc_symbole == NULL){
 										yyerror("Utilisation d'une variable non déclarée, affectation impossible !");
 									}else if(calc_symbole->initialised == false){
@@ -413,7 +598,8 @@ affectation_in_affectation_list_instruction:
 										}
 
 										//calculation_variable existe bien
-										fprintf(output_file, "\tCOP @%d @%d\n", id_symbole->id, calc_symbole->id);
+										fprintf(temp_file, "COP @%d @%d\n", id_symbole->id, calc_symbole->id);
+										ui_current_instruction_number++;
 									}
 										
 
@@ -467,57 +653,63 @@ calculation_value:
 
 
 
+
 calculation: 									
 					calculation_variable
 						{
-							Symbole * symbole = findSymbole(*symboles_table, $1);
+							Symbole * symbole = find_symbole(*symboles_table, $1);
 							if(symbole == NULL){
 								yyerror("Utilisation d'une variable non déclarée !");
 							}else if(symbole->initialised == false){
 								yyerror("Utilisation d'une variable non initialisée !");
 							}else{
 								//On push le symbole !!!!
-								Symbole * tmp_symbole = pushTempSymbole(symboles_table);
-								fprintf(output_file, "\tCOP @%d @%d\n", tmp_symbole->id, symbole->id);
+								Symbole * tmp_symbole = push_temp_symbole(symboles_table);
+								fprintf(temp_file, "COP @%d @%d\n", tmp_symbole->id, symbole->id);
+								ui_current_instruction_number++;
 							}
 						}
 
 					|calculation_value
 						{
 							//On push le symbole !!!!
-							Symbole * tmp_symbole = pushTempSymbole(symboles_table);
-							fprintf(output_file, "\tAFC @%d %d\n", tmp_symbole->id, $1);
+							Symbole * tmp_symbole = push_temp_symbole(symboles_table);
+							fprintf(temp_file, "AFC @%d %d\n", tmp_symbole->id, $1);
+							ui_current_instruction_number++;
 						}
 
 		 			|tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS
 		 			|calculation operator calculation 
 		 		   		{
 
-		 		   			Symbole * tmp_symbole_top = popTempSymbole(symboles_table);
+		 		   			Symbole * tmp_symbole_top = pop_temp_symbole(symboles_table);
 		 		   			if (tmp_symbole_top == NULL){
 		 		   				yyerror("Erreur sur calcul.");
 		 		   			}else{
-		 		   				Symbole * tmp_symbole_bottom = findSymbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
+		 		   				Symbole * tmp_symbole_bottom = find_symbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
 		 		   				if (tmp_symbole_bottom == NULL){
 		 		   					yyerror("Erreur sur calcul.");
 		 		   				}else{
 		 		   					//on est bon, on avait bien deux éléments empilé
-		 		   					fprintf(output_file, "\t%s @%d @%d @%d\n", $2, tmp_symbole_bottom->id, tmp_symbole_bottom->id, tmp_symbole_top->id);
+		 		   					fprintf(temp_file, "%s @%d @%d @%d\n", $2, tmp_symbole_bottom->id, tmp_symbole_bottom->id, tmp_symbole_top->id);
+		 		   					ui_current_instruction_number++;
 		 		   				}
 		 		   			}
 		 		   			
 		 		   		}
 		 			|tMINUS calculation
 		 		   		{
-		 		   			Symbole * tmp_symbole = findSymbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
+		 		   			Symbole * tmp_symbole = find_symbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
 		 		   			if (tmp_symbole == NULL){
 		 		   				yyerror("Erreur sur calcul.");
 		 		   			}else{
-		 		   				Symbole * symbole = pushTempSymbole(symboles_table);
-					   				fprintf(output_file, "\tAFC @%d 0\n", symbole->id);
+		 		   				Symbole * symbole = push_temp_symbole(symboles_table);
+					   				fprintf(temp_file, "AFC @%d 0\n", symbole->id);
+					   				ui_current_instruction_number++;
 
-					   				fprintf(output_file, "\tSOU @%d @%d @%d\n", tmp_symbole->id, tmp_symbole->id, symbole->id);
-					   				symbole = popTempSymbole(symboles_table);
+					   				fprintf(temp_file, "SOU @%d @%d @%d\n", tmp_symbole->id, tmp_symbole->id, symbole->id);
+					   				ui_current_instruction_number++;
+					   				symbole = pop_temp_symbole(symboles_table);
 		 		   			}
 					   			
 					   		}
@@ -527,7 +719,7 @@ calculation:
 
 %%
 
-void displayCommandHelp(){
+void display_help(){
 	printf("usage: g-- [options] source.c\n");
 	printf("options: -o output_file_name.asm\n");
 }
@@ -564,7 +756,7 @@ int main(int argc, char *argv[]){
 
 	if(optind != argc - 1){
 		printf("%s : nombre d'argument invalide.\n", argv[0]);
-		displayCommandHelp();
+		display_help();
 	}else{
 
 		if (output_file_name == NULL){
@@ -575,14 +767,20 @@ int main(int argc, char *argv[]){
 		/******************************** Création/ouverture des fichiers nécessaires ********************************/
 
 		yyin = fopen(argv[optind], "r");
-		if (!yyin){
-			printf("%s: impossible d'ouvrir le fichier %s\n", argv[0], argv[optind]);
-			exit(1);
+		if (yyin == NULL){
+			printf("%s : impossible d'ouvrir le fichier %s\n", argv[0], argv[optind]);
+			exit(EXIT_FAILURE);
 		}
 
-		output_file = fopen(output_file_name, "w+");
-		symboles_table = symbolesTableCreate(); /* initialisation de la table des symboles */
+		temp_file = tmpfile();
 
+		if (temp_file == NULL){
+			printf("%s : impossible de créer un fichier temporaire.\n", argv[0]);
+			exit(EXIT_FAILURE);
+		}
+
+		symboles_table = create_symboles_table(); /* initialisation de la table des symboles */
+		instructions_stack = create_instructions_stack(); /* initialisation de la pile utilisé pour traduire les structures en asm */
 
 
 
@@ -591,9 +789,34 @@ int main(int argc, char *argv[]){
 
 		switch (yyparse()){
 			case 0 :
-			 printf("Parsing was successful !!\n");
+			 //Parsing was sucessfull 
+			 if (ui_compilation_errors_nb != 0){
+			 	printf("compilation failed | %d errors.\n", ui_compilation_errors_nb);
+			 	exit(EXIT_FAILURE);
+			 }
+
+			 /************************* Copie du contenu du fichier temporaire dans le fichier de sortie **************************/
+
+			 FILE * output_file = fopen(output_file_name, "w+");
+			 int c; 
+
+			 if(output_file == NULL){
+			 	fclose(temp_file);
+			    printf("compilation failed | an error occured when creating output file.\n");
+			    exit(EXIT_FAILURE);
+			 }
+
+			 rewind(temp_file);
+			 while( ( c = fgetc(temp_file) ) != EOF ){
+			 	fputc(c, output_file);
+			 }
+			 
+			 printf("compilation success | tempFile properly copied into output file.\n");
+
+			 fclose(output_file);
+
 			 printf("Table des symboles :\n");
-			 printSymbolesTable(*symboles_table);
+			 print_symboles_table(*symboles_table);
 			 break;
 
 			case 1 :
@@ -608,7 +831,7 @@ int main(int argc, char *argv[]){
 			 printf("Parsing failed due to an unknown error !!\n");
 		}
 
-		fclose(output_file);
+		fclose(temp_file);
 		fclose(yyin);
 
 	}
@@ -620,6 +843,10 @@ int main(int argc, char *argv[]){
 
 
 void yyerror(char const *s) {
+	if (ui_compilation_errors_nb == 0){
+		fclose(temp_file);
+	}
+	ui_compilation_errors_nb++;
 	printf("%d : %s\n", yylineno, s);
 }
 

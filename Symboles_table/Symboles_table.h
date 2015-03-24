@@ -15,15 +15,15 @@ static const char * DEFAULT_TEMP_SYMBOLE_NAME = "";
 
 
 //Création de la table des symboles
-llist* symbolesTableCreate();
+llist* create_symboles_table();
 
 // Ajout d'un symbole dans la table des symboles
 // Si constant est true initialised sera obligatoirement à 1
-Symbole* ajouterSymbole(llist * symboles_table, const char * name, bool constant, bool initialised);
-Symbole* pushTempSymbole(llist * symboles_table);
-Symbole* popTempSymbole(llist * symboles_table);
-Symbole* findSymbole(llist symboles_table, const char * p_name);
+Symbole* add_symbole(llist * symboles_table, const char * name, bool constant, bool initialised);
+Symbole* push_temp_symbole(llist * symboles_table);
+Symbole* pop_temp_symbole(llist * symboles_table);
+Symbole* find_symbole(llist symboles_table, const char * p_name);
 int getIdTopStack(llist symboles_table);
-void printSymbolesTable(llist symboles_table);
+void print_symboles_table(llist symboles_table);
 
 #endif
