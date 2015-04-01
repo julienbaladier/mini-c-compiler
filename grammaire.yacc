@@ -303,9 +303,9 @@ while_structure:
 							if ($4 == -1){
 								yyerror("Condition du while incorrecte.");
 							}else{
+								push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
 								fprintf(temp_file, "%d:\tJMF %d ", ui_next_instruction_address, $4);
 								ui_next_instruction_address++; /* on aura une instruction jump conditionnel ici */
-								push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
 							}
 						}
 					instruction_list tCLOSED_BRACKET
@@ -572,18 +572,20 @@ calculation:
 		 		   		{
 		 		   			if (($1 == -1) || ($3 == -1)){
 		 		   				yyerror("Erreur sur calcul.");
+		 		   				$$ = -1;
 		 		   			}else{
-
 		 		   				while(pop_temp_symbole(symboles_table) != NULL); /* on vide la pile d'éventuelle variable temporaires */
 		 		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table); /* on ajoute une variable temporaire pour stocker le résultat */
 		 		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $2, tmp_symbole->id, $1, $3);
 		 		   				ui_next_instruction_address++;
+		 		   				$$ = tmp_symbole->id;
 		 		   			}
 		 		   		}
 		 			|tMINUS calculation
 		 		   		{
 		 		   			if ($2 == -1){
 		 		   				yyerror("Erreur sur calcul.");
+		 		   				$$ = -1;
 		 		   			}else{
 		 		   				Symbole * tmp_symbole = find_symbole(*symboles_table, DEFAULT_TEMP_SYMBOLE_NAME);
 		 		   				Symbole * tmp_symbole_top = push_temp_symbole(symboles_table);
@@ -594,11 +596,13 @@ calculation:
 		 		   					fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, tmp_symbole->id, tmp_symbole_top->id, tmp_symbole->id);
 		 		   					ui_next_instruction_address++;
 		 		   					tmp_symbole_top = pop_temp_symbole(symboles_table);
+		 		   					$$ = tmp_symbole->id;
 		 		   				}else{
 		 		   					fprintf(temp_file, "%d:\tAFC %d 0\n", ui_next_instruction_address, tmp_symbole_top->id);
 		 		   					ui_next_instruction_address++;
 		 		   					fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, tmp_symbole_top->id, tmp_symbole_top->id, $2);
 		 		   					ui_next_instruction_address++;
+		 		   					$$ = tmp_symbole_top->id;
 		 		   				}
 
 		 		   			}	
