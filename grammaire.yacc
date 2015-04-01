@@ -162,7 +162,7 @@ instruction:
 							temp_file = new_temp_file;
 
 							
-								// on revient à la bonne position
+							// on revient à la bonne position
 							if(fseek (temp_file, 0, SEEK_END)){
 								printf("fseek error\n");
 							}
@@ -313,7 +313,6 @@ while_structure:
 
 
 
-
 /*************************************AFFECTATIONS**********************************/
 
 
@@ -342,8 +341,20 @@ id_in_affection_and_id_list_declaration:
 
 
 
-affectation_in_affection_and_id_list_declaration:			
-					tID tEQUAL calculation 
+affectation_in_affection_and_id_list_declaration:
+					tID tEQUAL calculation_value
+						{
+							Symbole * symbole = find_symbole(*symboles_table, $1);
+
+							if(symbole != NULL){
+								yyerror("initialized int declaration impossible because its name is already used.");
+							}else {
+								Symbole * symbole = add_symbole(symboles_table, $1, false, true);
+								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, symbole->id, $3);
+								ui_next_instruction_address++;
+							}	
+						} 			
+					|tID tEQUAL calculation 
 						{	
 							pop_temp_symbole(symboles_table);
 							Symbole * symbole = find_symbole(*symboles_table, $1);
@@ -361,18 +372,6 @@ affectation_in_affection_and_id_list_declaration:
 							}
 
 						}
-					|tID tEQUAL calculation_value
-						{
-							Symbole * symbole = find_symbole(*symboles_table, $1);
-
-							if(symbole != NULL){
-								yyerror("initialized int declaration impossible because its name is already used.");
-							}else {
-								Symbole * symbole = add_symbole(symboles_table, $1, false, true);
-								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, symbole->id, $3);
-								ui_next_instruction_address++;
-							}	
-						} 
 					;
 
 
@@ -389,7 +388,21 @@ affectation_list_declaration:
 
 
 affectation_in_affectation_list_declaration:
-					tID tEQUAL calculation 
+					tID tEQUAL calculation_value
+						{
+							Symbole * symbole = find_symbole(*symboles_table, $1); /* on cherche un symbole qui a le nom tID */
+
+							if(symbole != NULL){ /* si le symbole/la variable existe déjà */
+								yyerror("const int declaration impossible because its name is already used.");
+
+							}else {
+								Symbole * symbole = add_symbole(symboles_table, $1, true, true); /* on ajoute le symbole à la table des symboles */
+								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, symbole->id, $3);
+								ui_next_instruction_address++;
+							}
+							
+						}
+					|tID tEQUAL calculation 
 						{	
 							pop_temp_symbole(symboles_table); /* on dépile au cas où l'on aurait un résultat de calcul au sommet de la pile */
 							Symbole * symbole = find_symbole(*symboles_table, $1); /* on cherche un symbole qui a le nom tID */
@@ -407,21 +420,6 @@ affectation_in_affectation_list_declaration:
 									ui_next_instruction_address++;
 								}
 							}
-						}
-
-					|tID tEQUAL calculation_value
-						{
-							Symbole * symbole = find_symbole(*symboles_table, $1); /* on cherche un symbole qui a le nom tID */
-
-							if(symbole != NULL){ /* si le symbole/la variable existe déjà */
-								yyerror("const int declaration impossible because its name is already used.");
-
-							}else {
-								Symbole * symbole = add_symbole(symboles_table, $1, true, true); /* on ajoute le symbole à la table des symboles */
-								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, symbole->id, $3);
-								ui_next_instruction_address++;
-							}
-							
 						}
 					;
 
@@ -446,8 +444,21 @@ affectation_list_instruction:
 					;
 
 
-affectation_in_affectation_list_instruction:		
-					id_in_affectation_in_affectation_list_instruction tEQUAL calculation 
+affectation_in_affectation_list_instruction:
+					id_in_affectation_in_affectation_list_instruction tEQUAL calculation_value
+						{
+							if($1 == -1){ /* on affecte bien sur un int qui existe */
+								printf("Affectation impossible.\n");
+								$$ = -1;
+							}else{
+								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, $1, $3);
+								ui_next_instruction_address++;
+								$$ = $1;
+							}
+							
+						}
+
+					|id_in_affectation_in_affectation_list_instruction tEQUAL calculation 
 						{ 
 							pop_temp_symbole(symboles_table);
 							if(($3 == -1) || ($1 != -1)){ 
@@ -459,19 +470,6 @@ affectation_in_affectation_list_instruction:
 								$$ = $1;
 							}
 
-						}
-
-					|id_in_affectation_in_affectation_list_instruction tEQUAL calculation_value
-						{
-							if($1 == -1){ /* on affecte bien sur un int qui existe */
-								printf("Affectation impossible.\n");
-								$$ = -1;
-							}else{
-								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, $1, $3);
-								ui_next_instruction_address++;
-								$$ = $1;
-							}
-							
 						}
 					;
 
