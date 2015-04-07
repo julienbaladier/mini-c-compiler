@@ -303,8 +303,8 @@ while_structure:
 							if ($4 == -1){
 								yyerror("Condition du while incorrecte.");
 							}else{
-								push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
 								fprintf(temp_file, "%d:\tJMF %d ", ui_next_instruction_address, $4);
+								push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
 								ui_next_instruction_address++; /* on aura une instruction jump conditionnel ici */
 							}
 						}
@@ -736,9 +736,6 @@ int main(int argc, char *argv[]){
 
     return 0;
 }
-
-
-// int fprintf( FILE * fic,const char * format [argument,...]);
 
 
 

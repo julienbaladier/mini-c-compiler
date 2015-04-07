@@ -48,7 +48,7 @@ llist* create_symboles_table(){
 Symbole* add_symbole(llist * symboles_table, const char * p_name, bool constant, bool initialised){
 	Symbole * p_symbole = (Symbole *) malloc(sizeof(Symbole));
 	list_node * node = list_insert_beginning(symboles_table, p_symbole);
-	p_symbole->id = symboles_table->node_number; p_symbole->p_name = p_name;
+	p_symbole->id = symboles_table->node_number-1; p_symbole->p_name = p_name;
 	p_symbole->constant = constant;
 	if(p_symbole->constant){
 		p_symbole->initialised = true;
@@ -61,7 +61,7 @@ Symbole* add_symbole(llist * symboles_table, const char * p_name, bool constant,
 Symbole* push_temp_symbole(llist * symboles_table){
 	Symbole * p_symbole = (Symbole *) malloc(sizeof(Symbole));
 	list_node * node = list_insert_beginning(symboles_table, p_symbole);
-	p_symbole->id = symboles_table->node_number; p_symbole->p_name = DEFAULT_TEMP_SYMBOLE_NAME;
+	p_symbole->id = symboles_table->node_number-1; p_symbole->p_name = DEFAULT_TEMP_SYMBOLE_NAME;
 	p_symbole->constant = true;
 	p_symbole->initialised = true;
 
