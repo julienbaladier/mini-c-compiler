@@ -55,6 +55,13 @@ void list_destroy(llist *l)
 	free(l);
 }
 
+
+void list_empty(llist *l){
+	while(!list_isempty(*l)){
+		list_pop(l);
+	}
+}
+
 list_node* list_node_create(void *data)
 {
 	if (!data) return NULL;
@@ -118,18 +125,24 @@ list_node* list_insert_end(llist *l, void *data)
 /* Removes a node from the list
  * Arguments: The list and the node that will be removed
  */
-void list_remove(llist *l, list_node *node)
-{
-	if (!l || !node) return;
-	list_node *tmp = l->node;
+void list_remove(llist *l, list_node *node){
 
-	while (tmp->next && tmp->next != node) tmp = tmp->next;
-	if (tmp->next) {
-		tmp->next = node->next;
-		list_node_destroy(node);
-		node = NULL;
-		l->node_number--;
+	if (l != NULL && node != NULL){
+		list_node *tmp = l->node;
+
+		while (tmp->next != NULL && tmp->next != node){
+			tmp = tmp->next;
+		}
+
+		if (tmp->next != NULL) {
+			tmp->next = node->next;
+			list_node_destroy(node);
+			node = NULL;
+			l->node_number--;
+		}
+
 	}
+	
 }
 
 /* Find an element in a list by the pointer to the element
@@ -147,7 +160,7 @@ list_node* list_find_by_data(llist *l, void *data)
 {
 	if (!l) return NULL;
 	for (list_node *it = l->node; it; it = it->next)
-		{ if (l->CmpFunc(it, data) == 0) return it; }
+		{ if (l->CmpFunc(it, data)) return it; }
 	return NULL;
 }
 

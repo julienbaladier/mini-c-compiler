@@ -19,6 +19,8 @@ exposant  [eE][+-]?{integer}
 "printf"				{return tPRINTF;}
 "{"						{return tOPENED_BRACKET;}
 "}"						{return tCLOSED_BRACKET;}
+"void"					{return tVOID;}
+"return"				{return tRETURN;}
 "const"					{return tCONST;}
 "if"					{return tIF;}
 "else"					{return tELSE;}

@@ -23,6 +23,7 @@ void list_node_destroy(list_node *node);
 list_node* list_insert_beginning(llist *l, void *data);
 list_node* list_insert_end(llist *l, void *data);
 void list_remove(llist *l, list_node *node);
+void list_empty(llist *l);
 //void list_remove_by_data(list_node **list, void *data);
 list_node* list_find_node(llist *l, list_node *node);
 list_node* list_find_by_data(llist *l, void *data);
