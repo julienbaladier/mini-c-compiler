@@ -25,14 +25,12 @@
 	llist * if_clauses_nb_stack;
 	unsigned int ui_next_instruction_address = 0; /* adresse de la prochaine instruction à écrire */ 
 	unsigned int ui_compilation_errors_nb = 0; /* nombre d'erreur détectées */
-	unsigned int ui_if_clause_nb = 0; /* compteur qui permet de compteur le nombre de clause if au cas ou l'on rencontre un bloc conditionnel */
 
 	/* offsets : 1 (@retour) + 0/1 (valeur retournée) + 0/n (nombre d'argument) */
 	unsigned int ui_offset_symboles_table_addresses = 0; /* offset de la fonction appelante */
 	unsigned int ui_called_function_offset_symboles_table_addresses = 0; /* offset de la fonction appellée */
 
 	int const_declaration_context = 0; /* Permet de savoir si on est dans un context d'une déclaration de constante ou de variable */
-	int last_if_clause_context = 0;
 
 %}
 
@@ -224,6 +222,20 @@ function_argument:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*******************************INSTRUCTIONS**********************************/
 
 
@@ -235,10 +247,18 @@ instruction_list:
 
 instruction:									
 		affectation_list_instruction tSEMICOLON
-		|if_structure
+		|tIF 
 			{
-				for (int i = ui_if_clause_nb; i > 0; --i){
-					printf("ui_if_clause_nb : %d\n", ui_if_clause_nb);
+				// ajout de l'élément dans la liste
+				push_if_clauses_nb(if_clauses_nb_stack);
+			}
+		 if_structure_end
+			{
+				// on fait un pop de la strucutre if
+				unsigned int * ui_if_clause_nb = pop_if_clauses_nb(if_clauses_nb_stack);
+				printf("ui_if_clause_nb : %d\n", *ui_if_clause_nb);
+				for (int i = *ui_if_clause_nb; i > 0; --i){
+					
 					print_symboles_table(*instructions_stack);
 					Instruction * instruction = pop_instruction(instructions_stack);
 
@@ -247,10 +267,7 @@ instruction:
 					rewind(temp_file);
 
 					int c = 0;
-					printf("yooooooo : \n");
-					if (instruction == NULL){
-						printf("yooooooo\n");
-					}
+
 					for (long i = 0; i < instruction->l_position; ++i){
 						c = fgetc(temp_file);
 						fputc(c, new_temp_file);
@@ -265,7 +282,6 @@ instruction:
 
 					temp_file = new_temp_file;
 				}
-				ui_if_clause_nb = 0;
 			}
 
 		|while_structure
@@ -346,90 +362,102 @@ instruction:
 
 
 
+
+
+
+
+
+
+
+
+
 /***************************************IF*****************************************/
 
 
 
 
-if_structure:		
-					if_clause
+if_structure_end:
+		if_clause_end
+			{
+				Instruction * instruction = pop_instruction(instructions_stack);
+				
+
+				FILE * new_temp_file = tmpfile();
+				rewind(temp_file);
+				int c = 0;
+
+				for (long i = 0; i < instruction->l_position; ++i){
+					c = fgetc(temp_file);
+					fputc(c, new_temp_file);
+				}
+
+				fprintf(new_temp_file, "%d\n", ui_next_instruction_address); // il faut sauter après le dernier jump que l'on ajoute par la suite
+
+
+				while( ( c = fgetc(temp_file) ) != EOF ){
+					fputc(c, new_temp_file);
+				}
+
+				fclose(temp_file);
+
+				temp_file = new_temp_file;
+				
+			}
+		|if_clause_end 
+			{
+				Instruction * instruction = pop_instruction(instructions_stack);
+
+				increment_top_if_clauses_nb(if_clauses_nb_stack);
+
+				FILE * new_temp_file = tmpfile();
+				rewind(temp_file);
+				int c = 0;
+
+				for (long i = 0; i < instruction->l_position; ++i){
+					c = fgetc(temp_file);
+					fputc(c, new_temp_file);
+				}
+
+				fprintf(new_temp_file, "%d\n", ui_next_instruction_address+1); // il faut sauter après le dernier jump que l'on ajoute par la suite
+
+
+				while( ( c = fgetc(temp_file) ) != EOF ){
+					fputc(c, new_temp_file);
+				}
+
+				fclose(temp_file);
+
+				temp_file = new_temp_file;
+
+				fprintf(temp_file, "%d:\tJMP ", ui_next_instruction_address);
+				ui_next_instruction_address++;
+				push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
+				
+			}
+		 else_structures
+		;
+
+
+else_structures:
+		tELSE tIF if_structure_end
+		|else_clause
+		;
+
+		
+
+if_clause_end:			
+					tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS tOPENED_BRACKET
 						{
-							Instruction * instruction = pop_instruction(instructions_stack);
-
-							FILE * new_temp_file = tmpfile();
-							rewind(temp_file);
-							int c = 0;
-
-							for (long i = 0; i < instruction->l_position; ++i){
-								c = fgetc(temp_file);
-								fputc(c, new_temp_file);
-							}
-
-							fprintf(new_temp_file, "%d\n", ui_next_instruction_address); // il faut sauter après la dernière instruction
-
-							while( ( c = fgetc(temp_file) ) != EOF ){
-								fputc(c, new_temp_file);
-							}
-
-							fclose(temp_file);
-
-							temp_file = new_temp_file;
-						}
-
-					|if_clause 
-						{
-							ui_if_clause_nb++;
-
-							Instruction * instruction = pop_instruction(instructions_stack);
-
-
-							FILE * new_temp_file = tmpfile();
-							rewind(temp_file);
-							int c = 0;
-
-							for (long i = 0; i < instruction->l_position; ++i){
-								c = fgetc(temp_file);
-								fputc(c, new_temp_file);
-							}
-
-							fprintf(new_temp_file, "%d\n", ui_next_instruction_address+1); // il faut sauter après le dernier jump que l'on ajoute par la suite
-
-
-							while( ( c = fgetc(temp_file) ) != EOF ){
-								fputc(c, new_temp_file);
-							}
-
-							fclose(temp_file);
-
-							temp_file = new_temp_file;
-
-
-							fprintf(temp_file, "%d:\tJMP ", ui_next_instruction_address);
-							ui_next_instruction_address++;
-							push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
-						}
-					 else_structure
-					;
-
-
-else_structure:
-					tELSE if_structure
-					|else_clause
-					;
-
-if_clause:			
-					tIF tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS tOPENED_BRACKET
-						{
-							if ($3 == -1){
+							if ($2 == -1){
 								yyerror("Condition du if incorrecte.");
 							}else{
 
 								// On supprime un éventuel résultat
-								remove_calculation_result(symboles_table, (unsigned int)$3);
+								remove_calculation_result(symboles_table, (unsigned int)$2);
 
 								// On souhaite sauter au prochain if si la condition est fausse
 								/* JMF @cond @prochain_bloc_conditionnel */
-								fprintf(temp_file, "%d:\tJMF %d ", ui_next_instruction_address, $3);
+								fprintf(temp_file, "%d:\tJMF %d ", ui_next_instruction_address, $2);
 
 								//  Ajout d'une instruction incomplète
 								push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
@@ -494,6 +522,21 @@ while_structure:
 			}
 		instruction_list tCLOSED_BRACKET
 		;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -606,53 +649,58 @@ function_call:
 
 
 affection_and_id_list_in_variable_declaration:					
-					affectation_in_variable_declaration //pour terminer
-					|id_in_affection_and_id_list_in_variable_declaration //pour terminer
-					|affectation_in_variable_declaration tCOMMA affection_and_id_list_in_variable_declaration //recursivité
-					|id_in_affection_and_id_list_in_variable_declaration tCOMMA affection_and_id_list_in_variable_declaration //recursivité
-					;
+		affectation_in_variable_declaration //pour terminer
+		|id_in_affection_and_id_list_in_variable_declaration //pour terminer
+		|affectation_in_variable_declaration tCOMMA affection_and_id_list_in_variable_declaration //recursivité
+		|id_in_affection_and_id_list_in_variable_declaration tCOMMA affection_and_id_list_in_variable_declaration //recursivité
+		;
 
 
 id_in_affection_and_id_list_in_variable_declaration:					
-					tID
-						{	
-							// On ajoute ce int (non initialisé) à la table des symboles s'il n'a pas encore été déclaré
-							Symbole * symbole = find_symbole(*symboles_table, $1);
-							if(symbole == NULL && const_declaration_context == 0){
-								symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, false, false);
-							}else if(const_declaration_context){
-								yyerror("Déclaration d'une constante non initialisée impossible.");
-							}else {
-								yyerror("Non initialized int declaration impossible because its name is already used.");
-							}
-						}
-					;
+		tID
+			{	
+				// On ajoute ce int (non initialisé) à la table des symboles s'il n'a pas encore été déclaré
+				Symbole * symbole = find_symbole(*symboles_table, $1);
+				if(symbole == NULL && const_declaration_context == 0){
+					symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, false, false);
+				}else if(const_declaration_context){
+					yyerror("Déclaration d'une constante non initialisée impossible.");
+				}else {
+					yyerror("Non initialized int declaration impossible because its name is already used.");
+				}
+			}
+		;
 
 
 
 affectation_in_variable_declaration:
-					tID tEQUAL calculation 
-						{	
+		tID tEQUAL calculation 
+			{	
 
-							// On supprime un éventuel résultat
-							remove_calculation_result(symboles_table, (unsigned int)$3);
+				// On supprime un éventuel résultat
+				remove_calculation_result(symboles_table, (unsigned int)$3);
 
-							Symbole * symbole = find_symbole(*symboles_table, $1); /* on cherche un symbole qui a le nom tID */
+				Symbole * symbole = find_symbole(*symboles_table, $1); /* on cherche un symbole qui a le nom tID */
 
-							if(symbole != NULL){ /* si le symbole/la variable existe déjà */
-								yyerror("Declaration impossible because name already in use.");
-							}else if($3 == -1){ /* si on a eu une erreur lors du calcul */
-								yyerror("Declaration impossible because of a calculation error.");
-							}else{
-								Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, const_declaration_context, true); /* on ajoute le symbole à la table des symboles */
-								if (symbole->ui_address != $3){ /* si le resultat de notre calcul se trouve déjà à l'emplacement réservé à notre variable, pas besoin de copie */
-									fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, symbole->ui_address, $3);
-									ui_next_instruction_address++;
-								}
-							}
+				if(symbole != NULL){ /* si le symbole/la variable existe déjà */
+					yyerror("Declaration impossible because name already in use.");
+				}else if($3 == -1){ /* si on a eu une erreur lors du calcul */
+					yyerror("Declaration impossible because of a calculation error.");
+				}else{
+					Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, const_declaration_context, true); /* on ajoute le symbole à la table des symboles */
+					if (symbole->ui_address != $3){ /* si le resultat de notre calcul se trouve déjà à l'emplacement réservé à notre variable, pas besoin de copie */
+						fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, symbole->ui_address, $3);
+						ui_next_instruction_address++;
+					}
+				}
 
-						}
-					;
+			}
+		;
+
+
+
+
+
 
 
 
@@ -662,135 +710,151 @@ affectation_in_variable_declaration:
 
 
 affectation_list_instruction:							
-					affectation_in_affectation_list_instruction 
-					|affectation_in_affectation_list_instruction tCOMMA affectation_list_instruction
-					;
+		affectation_in_affectation_list_instruction 
+		|affectation_in_affectation_list_instruction tCOMMA affectation_list_instruction
+		;
 
 
 affectation_in_affectation_list_instruction:
-					id_in_affectation_in_affectation_list_instruction tEQUAL calculation_value
-						{
-							if($1 == -1){ /* on affecte bien sur un int qui existe */
-								yyerror("Affectation impossible.");
-								$$ = -1;
-							}else{
-								fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, $1, $3);
-								ui_next_instruction_address++;
-								$$ = $1;
-							}
-							
-						}
+		id_in_affectation_in_affectation_list_instruction tEQUAL calculation_value
+			{
+				if($1 == -1){ /* on affecte bien sur un int qui existe */
+					yyerror("Affectation impossible.");
+					$$ = -1;
+				}else{
+					fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, $1, $3);
+					ui_next_instruction_address++;
+					$$ = $1;
+				}
+				
+			}
 
-					|id_in_affectation_in_affectation_list_instruction tEQUAL calculation operator calculation
-						{
-							// on vérifie qu'il n'y ait pas d'erreur sur aucune des opérande
-		 		   			if ($1 == -1){
-		 		   				yyerror("Affectation impossible.");
-		 		   				$$ = -1;
+		|id_in_affectation_in_affectation_list_instruction tEQUAL calculation operator calculation
+			{
+				// on vérifie qu'il n'y ait pas d'erreur sur aucune des opérande
+		   			if ($1 == -1){
+		   				yyerror("Affectation impossible.");
+		   				$$ = -1;
 
-		 		   			}else if(($3 == -1) || ($5 == -1)){
-		 		   				yyerror("Erreur sur calcul.");
-		 		   				$$ = -1;
-		 		   			}else{
+		   			}else if(($3 == -1) || ($5 == -1)){
+		   				yyerror("Erreur sur calcul.");
+		   				$$ = -1;
+		   			}else{
 
-		 		   				// On supprime d'éventuel résultat de calcul au sommet de la pile
-		 		   				remove_calculation_result(symboles_table, (unsigned int)$5);
-		 		   				remove_calculation_result(symboles_table, (unsigned int)$3);
-		 		   				
-		 		   				// On crée la commande assembleur
-		 		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $4, $1, $3, $5);
-		 		   				ui_next_instruction_address++;
-		 		   				
-		 		   				// on retourne l'addresse ou est stocké le résultat de l'opération
-		 		   				$$ = $1;
+		   				// On supprime d'éventuel résultat de calcul au sommet de la pile
+		   				remove_calculation_result(symboles_table, (unsigned int)$5);
+		   				remove_calculation_result(symboles_table, (unsigned int)$3);
+		   				
+		   				// On crée la commande assembleur
+		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $4, $1, $3, $5);
+		   				ui_next_instruction_address++;
+		   				
+		   				// on retourne l'addresse ou est stocké le résultat de l'opération
+		   				$$ = $1;
 
-		 		   			}
-							
-						}
-
-
-					|id_in_affectation_in_affectation_list_instruction tEQUAL tMINUS calculation
-						{
-		 		   			// On vérifie que calculation nous a pas retourné une erreur
-		 		   			if($1 == -1){
-		 		   				yyerror("Affectation impossible.");
-		 		   				$$ = -1;
-		 		   			}else if ($4 == -1){
-		 		   				yyerror("Erreur sur calcul.");
-		 		   				$$ = -1;
-		 		   			}else{
-		 		   				// On supprime le résultat éventuel au sommet de la table des symboles
-		 		   				Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$4);
-		 		   				int afc_zero_address;
-
-		 		   				// On crée un symbole temporaire pour le resultat
-		 		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+		   			}
+				
+			}
 
 
-		 		   				// S'il le résultat était au sommet de la table des symboles
-		 		   				if (calculation_result_symbole != NULL){
-		 		   					afc_zero_address = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
-		 		   				}else{
-		 		   					afc_zero_address = tmp_symbole->ui_address;
-		 		   				}
+		|id_in_affectation_in_affectation_list_instruction tEQUAL tMINUS calculation
+			{
+		   			// On vérifie que calculation nous a pas retourné une erreur
+		   			if($1 == -1){
+		   				yyerror("Affectation impossible.");
+		   				$$ = -1;
+		   			}else if ($4 == -1){
+		   				yyerror("Erreur sur calcul.");
+		   				$$ = -1;
+		   			}else{
+		   				// On supprime le résultat éventuel au sommet de la table des symboles
+		   				Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$4);
+		   				int afc_zero_address;
 
-		 		   				// On écrit des instructions assembleur
-		 		   				fprintf(temp_file, "%d:\tAFC %d 0\n", ui_next_instruction_address, afc_zero_address);
-		 		   				ui_next_instruction_address++;
-		 		   				fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, $1, afc_zero_address, $4);
-		 		   				ui_next_instruction_address++;
-
-		 		   				pop_temp_symbole(symboles_table);
-
-		 		   				// On retourne l'addresse du résultat du calcul
-		 		   				$$ = $1;
-
-		 		   			}
-							
-						}
+		   				// On crée un symbole temporaire pour le resultat
+		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
 
 
-					|id_in_affectation_in_affectation_list_instruction tEQUAL calculation 
-						{ 
+		   				// S'il le résultat était au sommet de la table des symboles
+		   				if (calculation_result_symbole != NULL){
+		   					afc_zero_address = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+		   				}else{
+		   					afc_zero_address = tmp_symbole->ui_address;
+		   				}
 
-							// On supprime un éventuel résultat
-							remove_calculation_result(symboles_table, (unsigned int)$3);
+		   				// On écrit des instructions assembleur
+		   				fprintf(temp_file, "%d:\tAFC %d 0\n", ui_next_instruction_address, afc_zero_address);
+		   				ui_next_instruction_address++;
+		   				fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, $1, afc_zero_address, $4);
+		   				ui_next_instruction_address++;
 
-							if(($3 == -1) || ($1 == -1)){ 
-								yyerror("Affectation impossible.");
-								$$ = -1;
-							}else{ /* on a un résultat de calcul et on affecte bien sur un int qui existe */
-								fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, $1, $3);
-								ui_next_instruction_address++;
-								$$ = $1;
-							}
+		   				pop_temp_symbole(symboles_table);
 
-						}
-					;
+		   				// On retourne l'addresse du résultat du calcul
+		   				$$ = $1;
+
+		   			}
+				
+			}
+
+
+		|id_in_affectation_in_affectation_list_instruction tEQUAL calculation 
+			{ 
+
+				// On supprime un éventuel résultat
+				remove_calculation_result(symboles_table, (unsigned int)$3);
+
+				if(($3 == -1) || ($1 == -1)){ 
+					yyerror("Affectation impossible.");
+					$$ = -1;
+				}else{ /* on a un résultat de calcul et on affecte bien sur un int qui existe */
+					fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, $1, $3);
+					ui_next_instruction_address++;
+					$$ = $1;
+				}
+
+			}
+		;
 
 
 
 
 id_in_affectation_in_affectation_list_instruction: 
-					tID
-						{
-							Symbole * symbole = find_symbole(*symboles_table, $1);
-							
-							if(symbole == NULL){
-								yyerror("Utilisation d'une variable non déclarée.");
-								$$ = -1;
-							}else if(symbole->b_constant == true){
-								yyerror("Affectation pour une constante impossible.");
-								$$ = -1;
-							}else{
-								if (symbole->b_initialised == false){
-									symbole->b_initialised = true;
-								}
-								$$ = symbole->ui_address;
-							}
+		tID
+			{
+				Symbole * symbole = find_symbole(*symboles_table, $1);
+				
+				if(symbole == NULL){
+					yyerror("Utilisation d'une variable non déclarée.");
+					$$ = -1;
+				}else if(symbole->b_constant == true){
+					yyerror("Affectation pour une constante impossible.");
+					$$ = -1;
+				}else{
+					if (symbole->b_initialised == false){
+						symbole->b_initialised = true;
+					}
+					$$ = symbole->ui_address;
+				}
 
-						}
-					;
+			}
+		;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -805,196 +869,212 @@ id_in_affectation_in_affectation_list_instruction:
 
 
 operator: 										
-					tADD { $$ = "ADD"; }
-					|tMINUS { $$ = "SOU"; }
-					|tMUL { $$ = "MUL"; }
-					|tDIV { $$ = "DIV"; }
-					|tEQUAL tEQUAL { $$ = "EQU"; }
-					|tLOWERTHAN { $$ = "INF"; }
-					|tGREATERTHAN { $$ = "SUP"; }
-					;
+		tADD { $$ = "ADD"; }
+		|tMINUS { $$ = "SOU"; }
+		|tMUL { $$ = "MUL"; }
+		|tDIV { $$ = "DIV"; }
+		|tEQUAL tEQUAL { $$ = "EQU"; }
+		|tLOWERTHAN { $$ = "INF"; }
+		|tGREATERTHAN { $$ = "SUP"; }
+		;
 
 
 calculation_variable: 			   				
-					tID { $$ = $1; }
-					|tADD tID { $$ = $2; }
-					;
+		tID { $$ = $1; }
+		|tADD tID { $$ = $2; }
+		;
 
 
 integer:										
-					tINTEGER_DEC_FORM { $$ = $1; }
-					| tINTEGER_EXP_FORM { $$ = $1; }
-					;
+		tINTEGER_DEC_FORM { $$ = $1; }
+		| tINTEGER_EXP_FORM { $$ = $1; }
+		;
 
 calculation_value:		 						
-					integer { $$ = $1; }
-					|tADD integer { $$ = $2; }
- 					;
+		integer { $$ = $1; }
+		|tADD integer { $$ = $2; }
+		;
 
 
 calculation_list_or_nothing: 
-					/* nothing */
-						{
-							$$ = 0;
-						}
-					|calculation_list
-						{
-							$$ = $1;
-						}
-					;
+		/* nothing */
+			{
+				$$ = 0;
+			}
+		|calculation_list
+			{
+				$$ = $1;
+			}
+		;
 
 calculation_list:
-					calculation_in_calculation_list
-						{
-							$$ = 1;
-						}
-					|calculation_in_calculation_list tCOMMA calculation_list
-						{
-							$$ = 1 + $3;
-						}
-					;
+		calculation_in_calculation_list
+			{
+				$$ = 1;
+			}
+		|calculation_in_calculation_list tCOMMA calculation_list
+			{
+				$$ = 1 + $3;
+			}
+		;
 
 
 calculation_in_calculation_list: 
-					calculation
-						{
+		calculation
+			{
 
-							if($1 == -1){
-								yyerror("Erreur sur calcul.");
-							}else{
+				if($1 == -1){
+					yyerror("Erreur sur calcul.");
+				}else{
 
-								// on supprime un éventuel résultat de calcul au sommet de la table des symboles
-								Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$1);
+					// on supprime un éventuel résultat de calcul au sommet de la table des symboles
+					Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$1);
 
-								// on crée un espace pour l'argument de la fonction qui va être appellé
-								Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+					// on crée un espace pour l'argument de la fonction qui va être appellé
+					Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
 
-								// Si le résultat du calcul n'est pas bien placé il faut faire un COP pour le placer au bon endroit
-								if($1 != tmp_symbole->ui_address){
-									fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, tmp_symbole->ui_address, $1);
-									ui_next_instruction_address++;
-		 		   				}
-							
-							}
+					// Si le résultat du calcul n'est pas bien placé il faut faire un COP pour le placer au bon endroit
+					if($1 != tmp_symbole->ui_address){
+						fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, tmp_symbole->ui_address, $1);
+						ui_next_instruction_address++;
+		   				}
+				
+				}
 
-						}
-					;
+			}
+		;
 
 
 
 
 calculation: 									
-					calculation_variable
-						{
-							// On vérifie que la variable existe bien
-							Symbole * symbole = find_symbole(*symboles_table, $1);
+		calculation_variable
+			{
+				// On vérifie que la variable existe bien
+				Symbole * symbole = find_symbole(*symboles_table, $1);
 
-							// Si elle n'existe pas on génère une erreur
-							if(symbole == NULL){
-								yyerror("Utilisation d'une variable non déclarée !");
-								$$ = -1;
+				// Si elle n'existe pas on génère une erreur
+				if(symbole == NULL){
+					yyerror("Utilisation d'une variable non déclarée !");
+					$$ = -1;
 
-							// Si elle n'est pas initialisée on génère une erreur également
-							}else if(symbole->b_initialised == false){
-								yyerror("Utilisation d'une variable non initialisée !");
-								$$ = -1;
+				// Si elle n'est pas initialisée on génère une erreur également
+				}else if(symbole->b_initialised == false){
+					yyerror("Utilisation d'une variable non initialisée !");
+					$$ = -1;
 
-							// Sinon on retourne son adresse
-							}else{
-								$$ = symbole->ui_address;
-							}
-						}
+				// Sinon on retourne son adresse
+				}else{
+					$$ = symbole->ui_address;
+				}
+			}
 
-					|calculation_value
-						{
-							// On ajoute une variable temporaire pour stocker le résultat du calcul
-							Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
-							
-							// On crée la commande assembleur
-							fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, tmp_symbole->ui_address, $1);
-							ui_next_instruction_address++;
+		|calculation_value
+			{
+				// On ajoute une variable temporaire pour stocker le résultat du calcul
+				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+				
+				// On crée la commande assembleur
+				fprintf(temp_file, "%d:\tAFC %d %d\n", ui_next_instruction_address, tmp_symbole->ui_address, $1);
+				ui_next_instruction_address++;
 
-							// On retourne l'adresse ou est stocké le résultat de l'opération
-							$$ = tmp_symbole->ui_address;
-						}
+				// On retourne l'adresse ou est stocké le résultat de l'opération
+				$$ = tmp_symbole->ui_address;
+			}
 
-		 			|tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS
-		 				{
-		 					// On retourne l'adresse ou est stocké le résultat de calculation
-		 					$$ = $2;
-		 				}
-		 			|calculation operator calculation 
-		 		   		{
-		 		   			// on vérifie qu'il n'y ait pas d'erreur sur aucune des opérande
-		 		   			if (($1 == -1) || ($3 == -1)){
-		 		   				yyerror("Erreur sur calcul.");
-		 		   				$$ = -1;
+			|tOPENED_PARENTHESIS calculation tCLOSED_PARENTHESIS
+				{
+					// On retourne l'adresse ou est stocké le résultat de calculation
+					$$ = $2;
+				}
+			|calculation operator calculation 
+		   		{
+		   			// on vérifie qu'il n'y ait pas d'erreur sur aucune des opérande
+		   			if (($1 == -1) || ($3 == -1)){
+		   				yyerror("Erreur sur calcul.");
+		   				$$ = -1;
 
-		 		   			}else{
+		   			}else{
 
-		 		   				// On supprime d'éventuel résultat de calcul au sommet de la pile
-		 		   				remove_calculation_result(symboles_table, (unsigned int)$3);
-		 		   				remove_calculation_result(symboles_table, (unsigned int)$1);
-		 		   			
-		 		   				
-		 		   				
-		 		   				// On ajoute une variable temporaire pour stocker le résultat du calcul
-		 		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses); /* on ajoute une variable temporaire pour stocker le résultat */
-		 		   				
-		 		   				// On crée la commande assembleur
-		 		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $2, tmp_symbole->ui_address, $1, $3);
-		 		   				ui_next_instruction_address++;
-		 		   				printf("%u\n", tmp_symbole->ui_address);
-		 		   				
-		 		   				// on retourne l'addresse ou est stocké le résultat de l'opération
-		 		   				$$ = tmp_symbole->ui_address;
+		   				// On supprime d'éventuel résultat de calcul au sommet de la pile
+		   				remove_calculation_result(symboles_table, (unsigned int)$3);
+		   				remove_calculation_result(symboles_table, (unsigned int)$1);
+		   			
+		   				
+		   				
+		   				// On ajoute une variable temporaire pour stocker le résultat du calcul
+		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses); /* on ajoute une variable temporaire pour stocker le résultat */
+		   				
+		   				// On crée la commande assembleur
+		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $2, tmp_symbole->ui_address, $1, $3);
+		   				ui_next_instruction_address++;
+		   				printf("%u\n", tmp_symbole->ui_address);
+		   				
+		   				// on retourne l'addresse ou est stocké le résultat de l'opération
+		   				$$ = tmp_symbole->ui_address;
 
-		 		   			}
-		 		   		}
-		 			|tMINUS calculation
-		 		   		{
-		 		   			// On vérifie que calculation nous a pas retourné une erreur
-		 		   			if ($2 == -1){
-		 		   				yyerror("Erreur sur calcul.");
-		 		   				$$ = -1;
+		   			}
+		   		}
+			|tMINUS calculation
+		   		{
+		   			// On vérifie que calculation nous a pas retourné une erreur
+		   			if ($2 == -1){
+		   				yyerror("Erreur sur calcul.");
+		   				$$ = -1;
 
-		 		   			}else{
-		 		   				// On supprime le résultat éventuel au sommet de la table des symboles
-		 		   				Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$2);
-		 		   				int afc_zero_address;
+		   			}else{
+		   				// On supprime le résultat éventuel au sommet de la table des symboles
+		   				Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$2);
+		   				int afc_zero_address;
 
-		 		   				// On crée un symbole temporaire pour le resultat
-		 		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+		   				// On crée un symbole temporaire pour le resultat
+		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
 
 
-		 		   				// S'il le résultat était au sommet de la table des symboles
-		 		   				if (calculation_result_symbole != NULL){
-		 		   					afc_zero_address = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
-		 		   				}else{
-		 		   					afc_zero_address = tmp_symbole->ui_address;
-		 		   				}
+		   				// S'il le résultat était au sommet de la table des symboles
+		   				if (calculation_result_symbole != NULL){
+		   					afc_zero_address = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+		   				}else{
+		   					afc_zero_address = tmp_symbole->ui_address;
+		   				}
 
-		 		   				// On écrit des instructions assembleur
-		 		   				fprintf(temp_file, "%d:\tAFC %d 0\n", ui_next_instruction_address, afc_zero_address);
-		 		   				ui_next_instruction_address++;
-		 		   				fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, tmp_symbole->ui_address, afc_zero_address, $2);
-		 		   				ui_next_instruction_address++;
+		   				// On écrit des instructions assembleur
+		   				fprintf(temp_file, "%d:\tAFC %d 0\n", ui_next_instruction_address, afc_zero_address);
+		   				ui_next_instruction_address++;
+		   				fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, tmp_symbole->ui_address, afc_zero_address, $2);
+		   				ui_next_instruction_address++;
 
-		 		   				// On retourne l'addresse du résultat du calcul
-		 		   				$$ = tmp_symbole->ui_address;
+		   				// On retourne l'addresse du résultat du calcul
+		   				$$ = tmp_symbole->ui_address;
 
-		 		   			}	
-						}
-					|function_call
-						{
-							$$ = $1;
-						}
-		 			;
+		   			}	
+			}
+		|function_call
+			{
+				$$ = $1;
+			}
+			;
 
 
 
 
 %%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 int main(int argc, char *argv[]){
