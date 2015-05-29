@@ -207,7 +207,6 @@ argument_in_function_argument_list:
 
 							// Sinon on l'ajoute à la table des symboles
 							}else{
-								printf("ui_offset_symboles_table_addresses : %d\n", ui_offset_symboles_table_addresses);
 
 								Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, false, true);
 								print_symboles_table(*symboles_table);
@@ -699,10 +698,7 @@ affectation_in_variable_declaration:
 				}else if($3 == -1){ /* si on a eu une erreur lors du calcul */
 					yyerror("Declaration impossible because of a calculation error.");
 				}else{
-					printf("ui_offset_symboles_table_addresses : %d\n", ui_offset_symboles_table_addresses);
 					Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, const_declaration_context, true); /* on ajoute le symbole à la table des symboles */
-					print_symboles_table(*symboles_table);
-					printf("\n\n");
 					if (symbole->ui_address != $3){ /* si le resultat de notre calcul se trouve déjà à l'emplacement réservé à notre variable, pas besoin de copie */
 						fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, symbole->ui_address, $3);
 						ui_next_instruction_address++;
@@ -945,8 +941,6 @@ calculation_in_calculation_list:
 					// on supprime un éventuel résultat de calcul au sommet de la table des symboles
 					Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$1);
 
-					printf("ui_offset_symboles_table_addresses : %d\n", ui_offset_symboles_table_addresses);
-					printf("ui_called_function_offset_symboles_table_addresses : %d\n", ui_called_function_offset_symboles_table_addresses);
 					// on crée un espace pour l'argument de la fonction qui va être appellé
 					Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
 
@@ -1025,7 +1019,6 @@ calculation:
 		   				// On crée la commande assembleur
 		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $2, tmp_symbole->ui_address, $1, $3);
 		   				ui_next_instruction_address++;
-		   				printf("%u\n", tmp_symbole->ui_address);
 		   				
 		   				// on retourne l'addresse ou est stocké le résultat de l'opération
 		   				$$ = tmp_symbole->ui_address;
