@@ -9,7 +9,7 @@
 //int nameCmpSymbole(list_node * node, const char * id)
 int cmp_symbole(list_node * node, void * p_name){
 	// printf("%s\n", (const char *)p_name);
-	return (strcmp (((Symbole *)node->data)->p_name, (const char *)p_name) == 0);
+	return !strcmp (((Symbole *)node->data)->p_name, (const char *)p_name);
 }
 
 

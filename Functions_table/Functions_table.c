@@ -5,7 +5,7 @@
 
 
 int cmp_function(list_node * node, void * p_name){
-	return strcmp (((Function *)node->data)->p_name, (const char *)p_name);
+	return !strcmp (((Function *)node->data)->p_name, (const char *)p_name);
 }
 
 
