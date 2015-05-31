@@ -53,6 +53,7 @@
 %type <nb> affectation_in_affectation_list_instruction id_in_affectation_in_affectation_list_instruction
 
 %type <nb> calculation_list calculation_list_or_nothing function_call
+%type <nb> declaration_function
 
 %type <var> tID calculation_variable operator function_argument
 
@@ -114,10 +115,11 @@ declaration_function_list:
 		|declaration_function_list declaration_function
 			{
 				/* RET 0 */
-				fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, 0);
+				fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, $2);
 				ui_next_instruction_address++;
 
 				print_symboles_table(*symboles_table);
+				printf("\n");
 				
 				symboles_table_reset(symboles_table);
 				fprintf(temp_file, "\n");
@@ -164,7 +166,9 @@ declaration_function:
 						}
 					declaration_variable_list instruction_list 
 					tCLOSED_BRACKET
-
+						{
+							$$ = 1;
+						}
 
 					|tVOID tID tOPENED_PARENTHESIS 
 						{
@@ -180,6 +184,9 @@ declaration_function:
 						}
 					declaration_variable_list instruction_list 
 					tCLOSED_BRACKET
+						{
+							$$ = 0;
+						}
 					;
 
 
@@ -209,8 +216,6 @@ argument_in_function_argument_list:
 							}else{
 
 								Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, const_argument_declaration_context, true);
-								print_symboles_table(*symboles_table);
-								printf("\n\n");
 							}
 
 						}
@@ -363,6 +368,7 @@ instruction:
 				remove_calculation_result(symboles_table, (unsigned int)$2);
 
 				// Copie du résultat à l'addresse de retour
+
 				fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, 0, $2);
 				ui_next_instruction_address++;
 
@@ -617,6 +623,7 @@ function_call:
 							// On retourne l'addresse +1 absolue = 0 en relatif si la fonction à une valeur de retour
 
 							if (p_used_function->return_value){
+								printf("pooop : %d\n", get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses));
 								$$ = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses);
 							}else{
 								$$ = -1;
@@ -1062,7 +1069,13 @@ calculation:
 			}
 		|function_call
 			{
-				$$ = $1;
+				if ($1 == -1){
+					yyerror("Cette fonction ne retourne rien, impossible de l'utiliser dans des calculs.");
+					$$ = -1;
+				}else{
+					Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+					$$ = $1;
+				}
 			}
 			;
 
