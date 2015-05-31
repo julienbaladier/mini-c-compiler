@@ -117,9 +117,6 @@ declaration_function_list:
 				/* RET 0 */
 				fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, $2);
 				ui_next_instruction_address++;
-
-				print_symboles_table(*symboles_table);
-				printf("\n");
 				
 				symboles_table_reset(symboles_table);
 				fprintf(temp_file, "\n");
@@ -276,7 +273,6 @@ instruction:
 
 				for (int i = *ui_if_clause_nb; i > 0; --i){
 					
-					print_symboles_table(*instructions_stack);
 					Instruction * instruction = pop_instruction(instructions_stack);
 
 					FILE * new_temp_file = tmpfile();
@@ -306,9 +302,8 @@ instruction:
 				Instruction * instruction_incomplete = pop_instruction(instructions_stack);
 
 				// On place le curseur au bon endroit
-				if(fseek (temp_file, instruction_incomplete->l_position, SEEK_SET)){
-					printf("fseek error\n");
-				}
+				fseek (temp_file, instruction_incomplete->l_position, SEEK_SET);
+				
 
 
 				FILE * new_temp_file = tmpfile();
@@ -623,7 +618,6 @@ function_call:
 							// On retourne l'addresse +1 absolue = 0 en relatif si la fonction à une valeur de retour
 
 							if (p_used_function->return_value){
-								printf("pooop : %d\n", get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses));
 								$$ = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses);
 							}else{
 								$$ = -1;

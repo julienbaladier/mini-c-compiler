@@ -16,6 +16,12 @@ void print_function(void * data){
 	}else{
 		printf("implemented line %d", ((Function *)data)->ui_implementation_address);
 	}
+	printf("\t\t");
+	if (((Function *)data)->return_value){
+		printf("return int");
+	}else{
+		printf("do not return");
+	}
 	printf("\n");
 }
 

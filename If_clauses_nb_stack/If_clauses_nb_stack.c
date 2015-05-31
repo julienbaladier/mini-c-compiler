@@ -38,7 +38,6 @@ unsigned int *pop_if_clauses_nb(llist * if_clauses_nb_stack){
 }
 
 void increment_top_if_clauses_nb(llist * if_clauses_nb_stack){
-	printf("plop\n");
 	(*((unsigned int *)if_clauses_nb_stack->node->data))++;
 	
 }
