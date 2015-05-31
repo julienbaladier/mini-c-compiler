@@ -31,7 +31,7 @@
 	unsigned int ui_called_function_offset_symboles_table_addresses = 0; /* offset de la fonction appellée */
 
 	int const_declaration_context = 0; /* Permet de savoir si on est dans un context d'une déclaration de constante ou de variable */
-
+	int const_argument_declaration_context = 0;
 %}
 
 %union { int nb; char * var; }
@@ -208,7 +208,7 @@ argument_in_function_argument_list:
 							// Sinon on l'ajoute à la table des symboles
 							}else{
 
-								Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, false, true);
+								Symbole * symbole = add_symbole(symboles_table, ui_offset_symboles_table_addresses, $1, const_argument_declaration_context, true);
 								print_symboles_table(*symboles_table);
 								printf("\n\n");
 							}
@@ -220,10 +220,12 @@ argument_in_function_argument_list:
 function_argument:
 					tINT tID
 						{
+							const_argument_declaration_context = 0;
 							$$ = $2;
 						}
 					|tCONST tINT tID
 						{
+							const_argument_declaration_context = 1;
 							$$ = $3;
 						}
 					;
@@ -440,9 +442,8 @@ if_structure_end:
 				temp_file = new_temp_file;
 
 				fprintf(temp_file, "%d:\tJMP ", ui_next_instruction_address);
-				ui_next_instruction_address++;
 				push_instruction(instructions_stack, ui_next_instruction_address, ftell(temp_file), false);
-				
+				ui_next_instruction_address++;
 			}
 		 else_structures
 		;
@@ -1146,7 +1147,7 @@ int main(int argc, char *argv[]){
 		}
 
 		symboles_table = create_symboles_table(); /* initialisation de la table des symboles */
-		functions_table = create_functions_table(); /* initialisation de la table des functions */
+		functions_table = create_functions_table();  /* initialisation de la table des functions */
 		instructions_stack = create_instructions_stack(); /* initialisation de la pile utilisé pour traduire les structures en asm */
 		if_clauses_nb_stack = create_if_clauses_nb_stack(); /* initialisation de la pile utilisé pour traduire les structures en asm */
 

@@ -6,7 +6,7 @@
 
 
 int cmp_if_clauses_nb(list_node * node, void * if_clauses_nb){
-	return ((unsigned int *)node->data) == ((unsigned int *)if_clauses_nb);
+	return *((unsigned int *)node->data) == *((unsigned int *)if_clauses_nb);
 }
 
 void print_if_clauses_nb(void * data){
