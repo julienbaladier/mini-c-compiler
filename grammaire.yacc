@@ -357,19 +357,89 @@ instruction:
 				}
 			}
 		|function_call tSEMICOLON
+		|tRETURN calculation_value tSEMICOLON
+			{
+   				
+   				// On crée la commande assembleur
+   				fprintf(temp_file, "%d:\tAFC 0 %d\n", ui_next_instruction_address, $2);
+   				ui_next_instruction_address++;
+
+   				// RET à l'address précisé à l'address 0
+				fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, 1);
+				ui_next_instruction_address++;
+
+		   	}
+		|tRETURN calculation operator calculation tSEMICOLON
+			{
+				// on vérifie qu'il n'y ait pas d'erreur sur aucune des opérande
+		   			if(($2 == -1) || ($4 == -1)){
+		   				yyerror("Erreur sur calcul, return impossible.");
+		   			}else{
+
+		   				// On supprime d'éventuel résultat de calcul au sommet de la pile
+		   				remove_calculation_result(symboles_table, (unsigned int)$4);
+		   				remove_calculation_result(symboles_table, (unsigned int)$2);
+		   				
+		   				// On crée la commande assembleur
+		   				fprintf(temp_file, "%d:\t%s %d %d %d\n", ui_next_instruction_address, $3, 0, $2, $4);
+		   				ui_next_instruction_address++;
+
+		   				// RET à l'address précisé à l'address 0
+						fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, 1);
+						ui_next_instruction_address++;
+		   				
+		   			}
+		   	}
+		|tRETURN tMINUS calculation tSEMICOLON
+			{
+		   			// On vérifie que calculation nous a pas retourné une erreur
+		   			if($3 == -1){
+		   				yyerror("Erreur sur calcul, return impossible.");
+		   			}else{
+		   				// On supprime le résultat éventuel au sommet de la table des symboles
+		   				Symbole * calculation_result_symbole = remove_calculation_result(symboles_table, (unsigned int)$3);
+		   				int afc_zero_address;
+
+		   				// On crée un symbole temporaire pour le resultat
+		   				Symbole * tmp_symbole = push_temp_symbole(symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+
+
+		   				// S'il le résultat était au sommet de la table des symboles
+		   				if (calculation_result_symbole != NULL){
+		   					afc_zero_address = get_next_available_symbole_address(*symboles_table, ui_offset_symboles_table_addresses+ui_called_function_offset_symboles_table_addresses);
+		   				}else{
+		   					afc_zero_address = tmp_symbole->ui_address;
+		   				}
+
+		   				// On écrit des instructions assembleur
+		   				fprintf(temp_file, "%d:\tAFC %d 0\n", ui_next_instruction_address, afc_zero_address);
+		   				ui_next_instruction_address++;
+		   				fprintf(temp_file, "%d:\tSOU %d %d %d\n", ui_next_instruction_address, 0, afc_zero_address, $3);
+		   				ui_next_instruction_address++;
+
+		   				pop_temp_symbole(symboles_table);
+
+		   			}
+				
+			}
 		|tRETURN calculation tSEMICOLON
 			{
 
-				remove_calculation_result(symboles_table, (unsigned int)$2);
+				if ($2 == -1){
+					yyerror("Erreur de calcul, return impossible.");
+				}else{
+					remove_calculation_result(symboles_table, (unsigned int)$2);
 
-				// Copie du résultat à l'addresse de retour
+					// Copie du résultat à l'addresse de retour
 
-				fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, 0, $2);
-				ui_next_instruction_address++;
+					fprintf(temp_file, "%d:\tCOP %d %d\n", ui_next_instruction_address, 0, $2);
+					ui_next_instruction_address++;
 
-				// RET à l'address précisé à l'address 0
-				fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, 1);
-				ui_next_instruction_address++;
+					// RET à l'address précisé à l'address 0
+					fprintf(temp_file, "%d:\tRET %d\n", ui_next_instruction_address, 1);
+					ui_next_instruction_address++;
+				}
+				
 			}
 		;
 
